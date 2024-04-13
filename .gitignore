@@ -1,4 +1,4 @@
-*.out
+.vscode/*.out
 
 # Compiled object files
 *.o
