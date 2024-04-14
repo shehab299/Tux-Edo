@@ -1,0 +1,20 @@
+*.out
+
+# Compiled object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Compiled dynamic libraries
+*.so
+*.dylib
+
+# Compiled static libraries
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
