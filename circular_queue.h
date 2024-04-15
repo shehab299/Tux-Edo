@@ -5,7 +5,9 @@
 typedef struct CircularQueue
 {
   struct PCB *head;
-  struct PCB *tail;
+  struct PCB *actualTail;  // the last pcb added to the queue
+  struct PCB *virtualTail; // While i am traversing the queue the pcb before head is virtual tail
+
   int count;
 } CircularQueue;
 #endif
@@ -14,4 +16,3 @@ void addProcess(CircularQueue *queue, PCB *pcb);
 void switchRunningProcess(CircularQueue *queue);
 PCB *getRunningProcess(CircularQueue *queue);
 int terminateProcess(CircularQueue *queue);
-void printLog(PCB *running, int clock);
