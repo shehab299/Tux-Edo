@@ -15,7 +15,7 @@ typedef struct PCB
   int preemptedAt; // last Time the process preempted at
   int finishTime;
   int turnaround;
-  int weightedTurnaround;
+  float weightedTurnaround;
   int state; // 10->started    11->resumed    12->stopped    13->finished   14->running
 } PCB;
 #endif
