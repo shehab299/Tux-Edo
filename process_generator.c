@@ -12,8 +12,13 @@
 #endif
 
 void clearResources(int);
+/*
 
-int main(int argc, char * argv[])
+        To run this function you need to pass an argument which is the absolute path of the project
+        like : /home/rabie/Desktop/Tux-Edo
+
+*/
+int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     // TODO Initialization
