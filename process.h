@@ -10,6 +10,15 @@ typedef struct Process
 } Process;
 #endif
 
+#ifndef __ProcessStates
+#define __ProcessStates
+#define started 10
+#define resumed 11
+#define stopped 12
+#define finished 13
+#define runningState 14
+#endif
+
 PCB *initializeProcess(Process p)
 {
     PCB *pcb = (PCB *)malloc(sizeof(PCB));
