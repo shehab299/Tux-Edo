@@ -17,12 +17,14 @@ typedef short bool;
 
 #define SHKEY 300
 
+#ifndef _ProcessStates
+#define _ProcessStates
 #define started 10
 #define resumed 11
 #define stopped 12
 #define finished 13
 #define runningState 14
-
+#endif
 ///==============================
 // don't mess with this variable//
 int *shmaddr; //
