@@ -37,6 +37,7 @@ int main(int argc, char * argv[])
         exit(-1);
     }
     *shmaddr = clk; /* initialize shared memory */
+    
     while (1)
     {
         sleep(1);
