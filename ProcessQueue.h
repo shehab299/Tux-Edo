@@ -3,24 +3,26 @@
 #include "headers.h"
 #include "process.h"
 
+typedef struct ProcessNode {
+
+    Process* proc;
+    struct ProcessNode* next;
+
+} ProcessNode;
 typedef struct ProcessQueue {
 
     ProcessNode* head;
     ProcessNode* tail;
-
     int count;
-} ProcessQueue;
 
-typedef struct ProcessNode {
-    Process* proc;
-    ProcessNode* next;
-} ProcessNode;
+} ProcessQueue;
 
 #endif
 
 void initializeProcessQueue(ProcessQueue* pq) {
     pq->head= NULL;
     pq->tail = NULL;
+    pq->count = 0;
 }
 
 void enqueue(ProcessQueue* pq, Process* p) {
@@ -37,11 +39,15 @@ void enqueue(ProcessQueue* pq, Process* p) {
         // Since there is only one process, head and tail will point to the same node
         pq->head = newNode;        
         pq->tail = pq->head;
+        pq->count++;
+        printf("Successfully enqueued process %d.\n", p->id);
         return;
     }
 
     pq->tail->next = newNode;
     pq->tail = newNode;
+    pq->count++;
+    printf("Successfully enqueued process %d.\n", p->id);
 }
 
 void dequeue(ProcessQueue* pq) {
@@ -53,7 +59,10 @@ void dequeue(ProcessQueue* pq) {
 
     ProcessNode* oldNode = pq->head;
     pq->head = pq->head->next;
+    pq->count--;
 
     // The function currently deleted the old node upon dequeueing. This may be reconsidered.
-    delete oldNode;
+    free(oldNode);
+
+    printf("Successfully dequeued process.\n");
 }

@@ -13,7 +13,9 @@
 #define RR 3
 #endif
 
-ProcessQueue* pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
+ProcessQueue* pQueue;
+
+void inputFile();
 
 void clearResources(int);
 /*
@@ -26,10 +28,14 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     
+    pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
     initializeProcessQueue(pQueue);
 
     // 1. Reading input file
     inputFile();
+
+    printf("\n %d", pQueue->count);
+    return 0;
 
     // 2. Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
@@ -40,25 +46,25 @@ int main(int argc, char *argv[])
     system("gcc scheduler.c -o scheduler");
 
     // Forking clock process and changing core image
-    int pid = fork();
-    if (pid == -1)
+    int clkPid = fork();
+    if (clkPid == -1)
     {
         perror("Error in forking");
         exit(-1);
     }
-    else if (pid == 0)
+    else if (clkPid == 0)
     {
         execl(strcat(argv[1], "/clk"), "clk", NULL);
     }
 
     // Forking scheduler process and changing core image
-    pid = fork();
-    if (pid == -1)
+    int schedulerPid = fork();
+    if (schedulerPid == -1)
     {
         perror("Error in forking");
         exit(-1);
     }
-    else if (pid == 0)
+    else if (schedulerPid == 0)
     {
         execl(strcat(argv[1], "/scheduler"), "scheduler", NULL);
     }
@@ -66,13 +72,20 @@ int main(int argc, char *argv[])
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
     // To get time use this
-    //int x = getClk();
+    int x = getClk();
     
-    //printf("current time is %d\n", x);
+    printf("current time is %d\n", x);
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
     // 7. Clear clock resources
+
+    //while(pQueue->count != 0)
+    while (getClk() != 100)
+    {
+        if (getClk() == pQueue->head->proc->arrivalTime)
+            kill(schedulerPid, SIGINT);
+    }
     destroyClk(true);
 }
 
@@ -109,6 +122,8 @@ void inputFile()
             newProcess->priority = priority;
 
             enqueue(pQueue, newProcess);
+
+            printf("Successfully read process with id %d\n", id);
         }
     }
 }
