@@ -1,23 +1,4 @@
-#include "PCB.h"
-#ifndef _Process
-#define _Process
-typedef struct Process
-{
-    int id;
-    int arrivalTime;
-    int runningTime;
-    int priority;
-} Process;
-#endif
-
-#ifndef __ProcessStates
-#define __ProcessStates
-#define started 10
-#define resumed 11
-#define stopped 12
-#define finished 13
-#define runningState 14
-#endif
+#include "headers.h"
 
 PCB *initializeProcess(Process p)
 {
