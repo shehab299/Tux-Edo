@@ -1,8 +1,8 @@
-#include "headers.h"
 #include "userInput.h"
 #include "inputFile.h"
 #include <unistd.h>
 #include <string.h>
+#include "ProcessQueue.h"
 
 #ifndef _SchedulingAlgorithm
 #define _SchedulingAlgorithm
@@ -21,15 +21,19 @@ void clearResources(int);
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
-    // TODO Initialization
-    // 1. Read the input files.
+    
+    // 1. Reading input file
     inputFile();
-    // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
+
+    // 2. Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
-    // 3. Initiate and create the scheduler and clock processes.
+
+    // 3. Initiating and creating scheduler and clock processes.
     char *absolutePath = argv[1];
     system("gcc clk.c -o clk");
     system("gcc scheduler.c -o scheduler");
+
+    // Forking clock process and changing core image
     int pid = fork();
     if (pid == -1)
     {
@@ -41,6 +45,7 @@ int main(int argc, char *argv[])
         execl(strcat(argv[1], "/clk"), "clk", NULL);
     }
 
+    // Forking scheduler process and changing core image
     pid = fork();
     if (pid == -1)
     {
@@ -55,10 +60,12 @@ int main(int argc, char *argv[])
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
     // To get time use this
-    int x = getClk();
-    printf("current time is %d\n", x);
+    //int x = getClk();
+    
+    //printf("current time is %d\n", x);
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
+    ProcessQueue* pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
     // 6. Send the information to the scheduler at the appropriate time.
     // 7. Clear clock resources
     destroyClk(true);
