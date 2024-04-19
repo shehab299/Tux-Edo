@@ -1,7 +1,6 @@
 #ifndef _PROCESSQ_
 #define _PROCESSQ_
-#include "headers.h"
-#include "process.h"
+#include "../Includes/defs.h"
 
 typedef struct ProcessNode {
 

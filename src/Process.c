@@ -1,4 +1,4 @@
-#include "headers.h"
+#include "Includes/defs.h"
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -9,7 +9,7 @@ int main(int argc, char const *argv[])
     connectToClk();
 
     int executionTime = atoi(argv[1]);
-    int timer = getClk();
+    int timer = getTime();
     
 
     printf("process started \n");

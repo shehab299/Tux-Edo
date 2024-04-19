@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "headers.h"
+#include "../Includes/defs.h"
 
 void intializeOutputFile(FILE **fptr, char *fileName)
 {

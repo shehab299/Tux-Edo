@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdio.h>      //if you don't use scanf/printf change this include
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -44,22 +46,12 @@ typedef struct Process
     int priority;
 } Process;
 
-#ifndef __ProcessStates
-#define __ProcessStates
-#define started 10
-#define resumed 11
-#define stopped 12
-#define finished 13
-#define runningState 14
-#endif
-
 enum ProcessStates{
 	STARTED = 1,
 	RESUMED,
 	STOPPED,
 	FINISHED
 };
-
 
 int* shmaddr; //No Need To Change It.
 
@@ -68,7 +60,6 @@ int getTime()
 {
     return *shmaddr;
 }
-
 
 void connectToClk()
 {

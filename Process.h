@@ -1,4 +1,4 @@
-#include "headers.h"
+#include "Includes/defs.h"
 
 PCB *initializeProcess(Process p)
 {
@@ -8,7 +8,7 @@ PCB *initializeProcess(Process p)
     pcb->remainingTime = p.runningTime;
     pcb->priority = p.priority;
     pcb->runningTime = p.runningTime;
-    pcb->state = started;
+    pcb->state = STARTED;
     pcb->waitingTime = 0;
     pcb->preemptedAt = 0;
     return pcb;
