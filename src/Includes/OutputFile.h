@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "PCB.h"
+#include "headers.h"
 
 void intializeOutputFile(FILE **fptr, char *fileName)
 {
