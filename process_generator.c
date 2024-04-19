@@ -1,8 +1,10 @@
 #include "userInput.h"
-#include "inputFile.h"
+//#include "inputFile.h"
 #include <unistd.h>
 #include <string.h>
 #include "ProcessQueue.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _SchedulingAlgorithm
 #define _SchedulingAlgorithm
@@ -10,6 +12,8 @@
 #define STRN 2
 #define RR 3
 #endif
+
+ProcessQueue* pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
 
 void clearResources(int);
 /*
@@ -22,6 +26,8 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     
+    initializeProcessQueue(pQueue);
+
     // 1. Reading input file
     inputFile();
 
@@ -65,7 +71,6 @@ int main(int argc, char *argv[])
     //printf("current time is %d\n", x);
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
-    ProcessQueue* pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
     // 6. Send the information to the scheduler at the appropriate time.
     // 7. Clear clock resources
     destroyClk(true);
@@ -74,4 +79,36 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     // TODO Clears all resources in case of interruption
+}
+
+void inputFile()
+{
+    Process* newProcess;
+    FILE *fptr;
+    fptr = fopen("processes.txt", "r");
+    if (fptr == NULL)
+        exit(-1);
+    int id, arrival, runtime, priority;
+    char ch;
+
+    while ((ch = fgetc(fptr)) != EOF)
+    {
+        if (ch == '#')
+        {
+            fscanf(fptr, "%*[^\n]");
+        }
+        else
+        {
+            ungetc(ch, fptr);
+            fscanf(fptr, "%d %d %d %d", &id, &arrival, &runtime, &priority);
+
+            newProcess = (Process *)malloc(sizeof(Process));
+            newProcess->arrivalTime = arrival;
+            newProcess->id = id;
+            newProcess->runningTime = runtime;
+            newProcess->priority = priority;
+
+            enqueue(pQueue, newProcess);
+        }
+    }
 }
