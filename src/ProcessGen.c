@@ -1,15 +1,14 @@
-#include "userInput.h"
-//#include "inputFile.h"
+#include "Includes/UI.h"
 #include <unistd.h>
 #include <string.h>
-#include "ProcessQueue.h"
+#include "DataStructures/ProcessQueue.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 #ifndef _SchedulingAlgorithm
 #define _SchedulingAlgorithm
 #define HPF 1
-#define STRN 2
+#define SRTN 2
 #define RR 3
 #endif
 
@@ -35,7 +34,6 @@ int main(int argc, char *argv[])
     inputFile();
 
     printf("\n %d", pQueue->count);
-    return 0;
 
     // 2. Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
@@ -43,7 +41,7 @@ int main(int argc, char *argv[])
     // 3. Initiating and creating scheduler and clock processes.
     char *absolutePath = argv[1];
     system("gcc clk.c -o clk");
-    system("gcc scheduler.c -o scheduler");
+    system("gcc Scheduler.c -o scheduler");
 
     // Forking clock process and changing core image
     int clkPid = fork();
@@ -70,9 +68,9 @@ int main(int argc, char *argv[])
     }
 
     // 4. Use this function after creating the clock process to initialize clock
-    initClk();
+    connectToClk();
     // To get time use this
-    int x = getClk();
+    int x = getTime();
     
     printf("current time is %d\n", x);
     // TODO Generation Main Loop
@@ -81,12 +79,8 @@ int main(int argc, char *argv[])
     // 7. Clear clock resources
 
     //while(pQueue->count != 0)
-    while (getClk() != 100)
-    {
-        if (getClk() == pQueue->head->proc->arrivalTime)
-            kill(schedulerPid, SIGINT);
-    }
-    destroyClk(true);
+    disconnectClk(true);
+    return 0;
 }
 
 void clearResources(int signum)
