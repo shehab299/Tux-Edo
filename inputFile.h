@@ -3,6 +3,7 @@
 
 void inputFile()
 {
+    Process* newProcess;
     FILE *fptr;
     fptr = fopen("processes.txt", "r");
     if (fptr == NULL)
@@ -20,6 +21,12 @@ void inputFile()
         {
             ungetc(ch, fptr);
             fscanf(fptr, "%d %d %d %d", &id, &arrival, &runtime, &priority);
+
+            newProcess = (Process *)malloc(sizeof(Process));
+            newProcess->arrivalTime = arrival;
+            newProcess->id = id;
+            newProcess->runningTime = runtime;
+            newProcess->priority = priority;
         }
     }
 }
