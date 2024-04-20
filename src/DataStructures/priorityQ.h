@@ -1,18 +1,18 @@
 #include <stdbool.h>
 
-typedef struct heap MinHeap;
+typedef struct heap Heap;
 
 
-MinHeap* create_heap(int size,bool comp(void*,void*));
+Heap* create_heap(int size,bool comp(void*,void*));
 
-void destory_heap(MinHeap* heap);
+void destory_heap(Heap* heap);
 
-void insert(void* k, MinHeap* heap);
+void insert(void* k, Heap* heap);
 
-void* minElement(MinHeap* heap);
+void* minElement(Heap* heap);
 
-void deleteMin(MinHeap* heap);
+void deleteMin(Heap* heap);
 
-int getCount(MinHeap* heap);
+int getCount(Heap* heap);
 
-bool isEmpty(MinHeap* heap);
+bool isEmpty(Heap* heap);
