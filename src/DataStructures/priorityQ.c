@@ -23,7 +23,7 @@ int rightIndex(int in){
     return (2 * in) + 2;
 }
 
-void minHeapify(int key, MinHeap* heap)
+void minHeapify(int key, Heap* heap)
 {
     if(key >= heap->count)
         return;
@@ -49,19 +49,19 @@ void minHeapify(int key, MinHeap* heap)
     }
 }
 
-void* minElement(MinHeap* heap){
+void* minElement(Heap* heap){
     return heap->minHeap[0];
 }
 
-void resize(MinHeap* heap){
+void resize(Heap* heap){
     heap->minHeap = realloc(heap->minHeap,2 * heap->capacity);
     heap->capacity *= 2;
 }
 
-MinHeap* create_heap(int size,bool (*comp)(void*,void*)){
+Heap* create_heap(int size,bool (*comp)(void*,void*)){
 
 
-    MinHeap* x = malloc(sizeof(MinHeap));
+    Heap* x = malloc(sizeof(Heap));
     x->comp = comp;
 
     if(size <= 0)
@@ -77,7 +77,7 @@ MinHeap* create_heap(int size,bool (*comp)(void*,void*)){
     return x;
 }
 
-void destory_heap(MinHeap* heap){
+void destory_heap(Heap* heap){
 
     if(heap == NULL)
     {
@@ -89,23 +89,23 @@ void destory_heap(MinHeap* heap){
     free(heap);
 }
 
-int getCount(MinHeap* heap){
+int getCount(Heap* heap){
 
     return (*heap).count;
 
 }
 
-bool isEmpty(MinHeap* heap){
+bool isEmpty(Heap* heap){
     return (*heap).count == 0;
 }
 
-void deleteMin(MinHeap* heap){
+void deleteMin(Heap* heap){
     heap->minHeap[0] = heap->minHeap[heap->count - 1];
     minHeapify(0,heap);
     heap->count--;
 }
 
-void insert(void* k, MinHeap* heap){
+void insert(void* k, Heap* heap){
 
     if(heap->count >= heap->capacity)
         resize(heap);
