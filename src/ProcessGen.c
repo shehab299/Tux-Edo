@@ -1,10 +1,10 @@
 #include "Includes/UI.h"
 #include <unistd.h>
 #include <string.h>
-#include "DataStructures/ProcessQueue.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "DataStructures/Queue.h"
+#include "Includes/defs.h"
 #ifndef _SchedulingAlgorithm
 #define _SchedulingAlgorithm
 #define HPF 1
@@ -12,7 +12,7 @@
 #define RR 3
 #endif
 
-ProcessQueue* pQueue;
+Queue* pQueue;
 
 void inputFile();
 
@@ -27,18 +27,19 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     
-    pQueue = (ProcessQueue*)malloc(sizeof(ProcessQueue));
-    initializeProcessQueue(pQueue);
+    pQueue = createQueue();
 
-    // 1. Reading input file
+    printf("let's tentatively go?");
+
+    // Reading input file
     inputFile();
 
-    printf("\n %d", pQueue->count);
+    return 0;
 
-    // 2. Taking user input for choice of scheduling algorithm and parameters if needed
+    // Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
 
-    // 3. Initiating and creating scheduler and clock processes.
+    // Initiating and creating scheduler and clock processes.
     char *absolutePath = argv[1];
     system("gcc clk.c -o clk");
     system("gcc Scheduler.c -o scheduler");

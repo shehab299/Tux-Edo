@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include "Queue.h"
 
 typedef struct Node{
     void* element;
@@ -57,4 +58,6 @@ Queue* createQueue() {
     q->head= NULL;
     q->tail = NULL;
     q->count = 0;
+
+    return q;
 }
