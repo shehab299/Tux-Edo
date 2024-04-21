@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdio.h>      //if you don't use scanf/printf change this include
+#include <stdio.h>      
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <time.h>
 
 typedef short bool;
 #define true 1
@@ -46,11 +48,23 @@ typedef struct Process
     int priority;
 } Process;
 
+typedef struct processMsg
+{
+    long mtype;
+    Process newProcess;
+} processMsg;
+
 enum ProcessStates{
 	STARTED = 1,
 	RESUMED,
 	STOPPED,
 	FINISHED
+};
+
+enum SchedulingAlgorithm{
+    HPF = 1,
+    SRTN,
+    RR
 };
 
 int* shmaddr; //No Need To Change It.
@@ -84,4 +98,11 @@ void disconnectClk(bool terminateAll)
     {
         killpg(getpgrp(), SIGINT);
     }
+}
+
+void sleep_ms(unsigned int milliseconds) {
+    struct timespec req;
+    req.tv_sec = milliseconds / 1000;
+    req.tv_nsec = (milliseconds % 1000) * 1000000L;
+    nanosleep(&req, NULL);
 }

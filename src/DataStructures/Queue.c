@@ -1,5 +1,6 @@
-#include <stdlib.h>
 #include "Queue.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 typedef struct Node{
     void* element;
@@ -11,6 +12,12 @@ typedef struct Queue {
     struct Node* tail;
     int count;
 } Queue;
+
+void* peek(Queue* q) {
+    if (q->count == 0)  return (void *) NULL;
+
+    return q->head->element;
+}
 
 
 void dequeue(Queue* q) {
@@ -43,12 +50,14 @@ void enqueue(Queue* q, void* element) {
         q->head = newNode;        
         q->tail = q->head;
         q->count++;
+        printf("Enqueued first element!");
         return;
     }
 
     q->tail->next = newNode;
     q->tail = newNode;
     q->count++;
+    printf("Enqueued element!");
 }
 
 Queue* createQueue() {

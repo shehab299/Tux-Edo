@@ -7,9 +7,9 @@ build:
 	gcc src/ProcessGen.c Queue.o -o pg.out
 
 clean:
-	rm -f *.o *.out processes.txt
+	rm -f *.o *.out
 
 all: clean build run
 
 run:
-	./pg.out
+	./pg.out	/home/khalid/Desktop/Project:Tux-Edo
