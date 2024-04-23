@@ -29,6 +29,5 @@ int main(int argc, char const *argv[])
 
 
     disconnectClk(false);    
-    exit(0);
     return 0;
 }
