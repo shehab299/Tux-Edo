@@ -5,19 +5,48 @@
 #define RUNNING 2
 #define TERMINATED 3
 
-//FROM WHERE THE PROCESSES COME?
-//Maybe each second I'll check the msgqueue
+int rec_val, msgQueueID;
+processMsg msg;
 
-void processTerminates(int sigNum)
+void clearResources(int signum)
 {
-    //DONNO YET
-    signal(SIGUSR1, processTerminates);
+    exit(0);
+    signal(SIGINT, clearResources);
+}
+
+bool comparePriority(void *a, void *b)
+{
+    PCB *processA = (PCB *)a;
+    PCB *processB = (PCB *)b;
+    return processA->priority < processB->priority;
+}
+
+PCB createPCB(Process newProcess)
+{
+    PCB newPCB;
+
+    newPCB.next = NULL;
+    newPCB.pid = 0;
+    newPCB.id = newProcess.id;
+    newPCB.arrivalTime = newProcess.arrivalTime;
+    newPCB.runningTime = newProcess.runningTime;
+    newPCB.priority = newProcess.priority;
+    newPCB.waitingTime = 0;
+    newPCB.executionTime = 0;
+    newPCB.remainingTime = newPCB.runningTime;
+    newPCB.startingTime = 0;
+    newPCB.preemptedAt = 0;
+    newPCB.finishTime = 0;
+    newPCB.turnaround = 0;
+    newPCB.weightedTurnaround = 0.0;
+    newPCB.state = READY;
+
+    return newPCB;
 }
 
 typedef struct Scheduler
 {
-    PCB *processes;
-    int currentTime;
+    Heap *readyQueue;
     int numProcesses;
     int cpuUtilization;
     float avgWTA;
@@ -27,6 +56,33 @@ typedef struct Scheduler
     float totalWTA;
 
 } Scheduler;
+
+void processMessageReceiver(int signum)
+{
+    int rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess),
+                         getpid() % 10000, IPC_NOWAIT);
+    while (rec_val != -1 || errno != ENOMSG)
+    {
+        if (errno == ENOMSG)
+        {
+            printf("Scheduler: Message queue is empty\n");
+            break;
+        }
+
+        printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
+        createPCB(msg.newProcess);
+        // scheduler->numProcesses++;
+    }
+    /*     if (rec_val == -1)
+            perror("Error in receiving message from ProcessGen!"); */
+
+    signal(SIGUSR1, processMessageReceiver);
+}
+
+void processTerminates(int sigNum)
+{
+    signal(SIGUSR1, processTerminates);
+}
 
 float getAvgTA(Scheduler *scheduler)
 {
@@ -40,39 +96,17 @@ float getAvgWTA(Scheduler *scheduler)
     return scheduler->avgWTA;
 }
 
-void HPF(Scheduler *scheduler)
+void HPFScheduler(Scheduler *scheduler)
 {
-    Heap *pq = create_heap(scheduler->numProcesses, true);
-
-    for (int i = 0; i < scheduler->numProcesses; i++)
-    {
-        if (scheduler->processes[i].state == READY)
-        {
-            insert((void *)&scheduler->processes[i], pq);
-        }
-    }
+    // Heap *pq = create_heap(scheduler->numProcesses, true);
 
     while (1)
     {
-        //check if a new process arrived
-        //add it to the queue
-        //Okay, when to stop hehe
-        //wait, I'll run forever!?
-        //what if no processes?
-        if (scheduler->currentTime != getTime())
+        if (!isEmpty(scheduler->readyQueue))
         {
-            //check if a process arrived
-            //add it to the queue
-            scheduler->numProcesses++;
-            scheduler->currentTime = getTime();
-        }
-
-        if (!isEmpty(pq))
-        {
-            // replace it with function runProcess();
-            PCB *running = (PCB *)minElement((void *)pq);
+            PCB *running = (PCB *)minElement((void *)scheduler->readyQueue);
             running->state = RUNNING;
-            running->remainingTime = running->runningTime;
+            running->startingTime = getTime();
             int pid = fork();
 
             if (pid == -1)
@@ -82,7 +116,6 @@ void HPF(Scheduler *scheduler)
             }
             else if (pid == 0)
             {
-                system("gcc ./Process.c -o process");
                 execl("./process", "./process", NULL);
             }
             else
@@ -95,101 +128,51 @@ void HPF(Scheduler *scheduler)
                 scheduler->totalTA += running->turnaround;
                 scheduler->totalWTA += running->weightedTurnaround;
 
-                deleteMin(pq);
-                // delete its PCB
+                deleteMin(scheduler->readyQueue);
             }
         }
     }
 }
 
-Scheduler *createScheduler(int numProcesses)
+Scheduler *createScheduler()
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
-    scheduler->processes = (PCB *)malloc(numProcesses * sizeof(PCB));
-    scheduler->numProcesses = numProcesses;
+    Heap *readyQueue = create_heap(scheduler->numProcesses, comparePriority);
+    scheduler->numProcesses = 0.0;
     scheduler->cpuUtilization = 0.0;
-    scheduler->currentTime = getTime();
     scheduler->totalTA = 0.0;
     scheduler->totalWTA = 0.0;
     scheduler->avgWTA = 0.0;
     scheduler->avgTA = 0.0;
     scheduler->standardDeviation = 0.0;
-
-    scheduler->processes[0] = (PCB){NULL,1, 0, 5, 4, 5, 0, 0, 0.0, 0, 0, READY};
-    scheduler->processes[1] = (PCB){NULL,2, 1, 3, 4, 3, 0, 0, 0.0, 0, 0, READY};
-    scheduler->processes[2] = (PCB){NULL,3, 2, 6, 4, 6, 0, 0, 0.0, 0, 0, READY};
-    scheduler->processes[3] = (PCB){NULL,4, 3, 2, 4, 2, 0, 0, 0.0, 0, 0, READY};
-    scheduler->processes[4] = (PCB){NULL,5, 4, 4, 4, 4, 0, 0, 0.0, 0, 0, READY};
 }
 
 int main(int argc, char *argv[])
 {
-    signal(SIGUSR1, processTerminates);
-    // key_t key = ftok("./keyFile", 1);
-    // int msgqid = msgget(key, IPC_CREAT | 0666);
-    // if (msgqid == -1)
-    // {
-    //     perror("Error in creating msg queue");
-    //     exit(-1);
-    // }
+    signal(SIGUSR1, processMessageReceiver);
+    signal(SIGINT, clearResources);
+    printf("Hello from scheduler!\n");
 
     connectToClk();
-    Scheduler *scheduler = createScheduler(5);
+
+    key_t key_id = ftok("../keyfile", 65);
+    msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
+
+    if (msgQueueID == -1)
+    {
+        perror("Error in creating message queue!");
+        exit(-1);
+    }
+
+    printf("Scheduler: message queue created with id %d\n", msgQueueID);
+
+    msg.mtype = getpid() % 10000;
+
+    while (getTime() < 35)
+    {
+        sleep_ms(950);
+        printf("Scheduler still running\n");
+    }
+
     disconnectClk(true);
-// =======
-// #include "Includes/defs.h"
-
-// int rec_val, msgQueueID;
-// processMsg msg;
-
-// void processMessageReceiver(int signum) {
-//     while((rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), getpid() % 10000, IPC_NOWAIT)) != -1 || errno != ENOMSG) 
-//     {
-//         if (errno == ENOMSG) {
-//             printf("Scheduler: Message queue is empty\n");
-//             break;
-//         }
-        
-//         printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
-//     }
-// /*     if (rec_val == -1)
-//         perror("Error in receiving message from ProcessGen!"); */
-
-//     signal(SIGUSR1, processMessageReceiver);
-// }
-
-// void clearResources(int signum) {
-//     exit (0);
-//     signal(SIGINT, clearResources);
-// }
-
-// int main() {
-//     signal(SIGUSR1, processMessageReceiver);
-//     signal(SIGINT, clearResources);
-//     printf("Hello from scheduler!\n");
-
-//     connectToClk();
-
-//     key_t key_id = ftok("../keyfile", 65);
-//     msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
-
-//     if (msgQueueID == -1)
-//     {
-//         perror("Error in creating message queue!");
-//         exit(-1);
-//     }
-
-//     printf("Scheduler: message queue created with id %d\n", msgQueueID);
-
-//     msg.mtype = getpid() % 10000;
-
-//     while(getTime() < 35) 
-//     {
-//         sleep_ms(950);
-//         printf("Scheduler still running\n");
-//     }
-
-//     disconnectClk(true);
-
-//     
 }
