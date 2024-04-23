@@ -60,6 +60,7 @@ void resize(Heap* heap){
 
 Heap* create_heap(int size,bool (*comp)(void*,void*)){
 
+
     Heap* x = malloc(sizeof(Heap));
     x->comp = comp;
 
