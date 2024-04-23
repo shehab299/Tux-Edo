@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     }
     else if (clkPid == 0)
     {
-        execl(strcat(argv[1], "/clk.out"), "clk", NULL);
+        execl("./clk.out", "clk", NULL);
     }
 
     // Forking scheduler process and changing core image
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     }
     else if (schedulerPid == 0)
     {
-        execl(strcat(argv[1], "/scheduler.out"), "scheduler", NULL);
+        execl("./scheduler.out", "scheduler", NULL);
     }
 
     connectToClk();
