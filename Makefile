@@ -21,3 +21,4 @@ clean:
 	rm -f *.o *.out
 
 all: clean build run
+
