@@ -7,6 +7,21 @@ int currentTime;
 PCB *running;
 PCB *top;
 
+int createMessageQueue()
+{
+    key_t key_id = ftok("../keyfile", 65);
+    int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
+
+    if (msgQueueID == -1)
+    {
+        perror("Error in creating message queue!");
+        exit(-1);
+    }
+
+    return msgQueueID;
+}
+
+
 typedef struct Scheduler
 {
     Heap *readyQueue;
@@ -88,12 +103,9 @@ void processMessageReceiver(int signum)
             break;
         }
 
-        // printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
         PCB *newProcessPCB = createPCB(msg.newProcess);
         insert((void *)newProcessPCB, scheduler->readyQueue);
-        // printf("Num of processes in ready: %d\n", getCount(scheduler->readyQueue));
         scheduler->numProcesses++;
-        // printf("Scheduler: num of processes are now: %d\n", scheduler->numProcesses);
     }
     signal(SIGUSR1, processMessageReceiver);
 }
@@ -193,34 +205,25 @@ int main(int argc, char *argv[])
 
     connectToClk();
 
-    key_t key_id = ftok("../keyfile", 65);
-    msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
-
-    if (msgQueueID == -1)
-    {
-        perror("Error in creating message queue!");
-        exit(-1);
-    }
+    msgQueueID = createMessageQueue();
 
     msg.mtype = getpid() % 10000;
-    Process initProcess;
-    initProcess.id = -1;
-    initProcess.arrivalTime = 0;
-    initProcess.runningTime = 0;
-    initProcess.priority = 0;
+    Process initProcess = {.id=-1,.arrivalTime=0,.priority=0,.runningTime=0};
     running = createPCB(initProcess);
     top = createPCB(initProcess);
     running->state = READY;
+
     currentTime = getTime();
+
     while (1)
     {
         if (selectedAlgo == HPF)
             HPFScheduler(scheduler);
         else if (selectedAlgo == SRTN)
         {
-
             SRTNScheduler(scheduler);
         }
+
         // else
         // {
         //     RR(scheduler);
@@ -228,3 +231,4 @@ int main(int argc, char *argv[])
     }
     disconnectClk(true);
 }
+

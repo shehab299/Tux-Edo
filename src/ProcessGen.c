@@ -13,12 +13,7 @@ void sendMessageToScheduler(int, processMsg *, Process *);
 
 int msgQueueID;
 
-/*
 
-        To run this function you need to pass an argument which is the absolute path of the project
-        like : /home/rabie/Desktop/Tux-Edo
-
-*/
 
 int main(int argc, char *argv[])
 {
@@ -75,18 +70,26 @@ int main(int argc, char *argv[])
     while ((nextProcess = peek(pQueue)) != NULL)
     {
 
-        time = getTime();
-        // printf("current time is %d\n", time);
+    time = getTime();
 
-        while (nextProcess && time == nextProcess->arrivalTime)
-        {
-            kill(schedulerPid, SIGUSR1);
-            sendMessageToScheduler(msgQueueID, &msg, nextProcess);
-            dequeue(pQueue);
-            nextProcess = peek(pQueue);
-        }
 
-        sleep_ms(500);
+    int processesSent = 0;
+    while (nextProcess && time == nextProcess->arrivalTime)
+    {
+        sendMessageToScheduler(msgQueueID, &msg, nextProcess);
+        dequeue(pQueue);
+        nextProcess = peek(pQueue);
+
+        processesSent = 1;
+    }
+
+    if (processesSent)
+    {
+        kill(schedulerPid, SIGUSR1);
+    }
+
+    sleep_ms(500);
+
     }
 
     // printf("ProcessGen: done reading and sending.\n");
@@ -156,8 +159,6 @@ int createMessageQueue()
         perror("Error in creating message queue!");
         exit(-1);
     }
-
-    // printf("ProcessGen: message queue created with id %d\n", msgQueueID);
 
     return msgQueueID;
 }
