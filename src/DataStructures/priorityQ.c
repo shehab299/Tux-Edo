@@ -105,6 +105,7 @@ void deleteMin(Heap* heap){
 }
 
 void insert(void* k, Heap* heap){
+
     if(heap->count >= heap->capacity)
         resize(heap);
 
