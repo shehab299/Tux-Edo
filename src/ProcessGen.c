@@ -13,13 +13,6 @@ void sendMessageToScheduler(int, processMsg *, Process *);
 
 int msgQueueID;
 
-/*
-
-        To run this function you need to pass an argument which is the absolute path of the project
-        like : /home/rabie/Desktop/Tux-Edo
-
-*/
-
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
@@ -29,8 +22,6 @@ int main(int argc, char *argv[])
 
     // Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
-
-    char *absolutePath = argv[1];
 
     // Forking clock process and changing core image
     int clkPid = fork();
@@ -62,10 +53,6 @@ int main(int argc, char *argv[])
     msgQueueID = createMessageQueue();
     processMsg msg;
     msg.mtype = schedulerPid % 10000;
-
-    // TODO Generation Main Loop
-    // 6. Send the information to the scheduler at the appropriate time.
-    // 7. Clear clock resources
 
     int time;
     Process *nextProcess;
@@ -101,7 +88,6 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
-    // TODO Clears all resources in case of interruption
     msgctl(msgQueueID, IPC_RMID, (struct msqid_ds *)0);
     disconnectClk(true);
     exit(0);

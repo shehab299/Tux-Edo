@@ -1,5 +1,5 @@
 #include "Includes/defs.h"
-#include "./DataStructures/priorityQ.h"
+#include "./DataStructures/PriorityQueue.h"
 
 #define READY 1
 #define RUNNING 2
@@ -11,7 +11,7 @@ PCB *running;
 
 typedef struct Scheduler
 {
-    Heap *readyQueue;
+    PriorityQueue* readyQueue;
     int numProcesses;
     int cpuUtilization;
     float avgWTA;
@@ -57,10 +57,11 @@ bool comparePriority(void *a, void *b)
     return processA->priority < processB->priority;
 }
 
+
 Scheduler *createScheduler()
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
-    scheduler->readyQueue = create_heap(10, comparePriority);
+    scheduler->readyQueue = pq_create(10, comparePriority);
     scheduler->numProcesses = 0;
     scheduler->cpuUtilization = 0.0;
     scheduler->totalTA = 0.0;
@@ -103,10 +104,9 @@ void processMessageReceiver(int signum)
 
         printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
         PCB *newProcessPCB = createPCB(msg.newProcess);
-        // printf("Scheduler: PCB is created successfully: %d\n", newProcessPCB->arrivalTime);
 
-        insert((void *)newProcessPCB, scheduler->readyQueue);
-        printf("Num of processes in ready: %d\n", getCount(scheduler->readyQueue));
+        pq_enqueue((void *)newProcessPCB, scheduler->readyQueue);
+        printf("Num of processes in ready: %d\n", pq_size(scheduler->readyQueue));
         scheduler->numProcesses++;
         printf("Scheduler: num of processes are now: %d\n", scheduler->numProcesses);
     }
@@ -121,12 +121,12 @@ void clearResources(int signum)
 
 void HPFScheduler(Scheduler *scheduler)
 {
-    if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
+    if (running->state != RUNNING && !pq_empty(scheduler->readyQueue))
     {
-        running = (PCB *)minElement((void *)scheduler->readyQueue);
+        running = (PCB*) pq_top((void *)scheduler->readyQueue);
         running->state = RUNNING;
         running->startingTime = getTime();
-        deleteMin(scheduler->readyQueue);
+        pq_dequeue(scheduler->readyQueue);
         printf("Scheduler: Running process with pid = %d, runningTime = %d, Priority: %d\n", running->id, running->runningTime, running->priority);
         int pid = fork();
 
@@ -139,8 +139,8 @@ void HPFScheduler(Scheduler *scheduler)
         {
             char runningTimeStr[10];
             sprintf(runningTimeStr, "%d", running->runningTime);
-            execl("/home/asmaa/Desktop/Tux-Edo/process.out", "./process", runningTimeStr, NULL);
-        }
+            execl("./process.out", "./process.out", runningTimeStr, NULL);
+        };
     }
 }
 
@@ -176,11 +176,6 @@ int main()
         HPFScheduler(scheduler);
     }
 
-    // while (getTime() < 35)
-    // {
-    //     sleep_ms(950);
-    //     printf("Scheduler still running\n");
-    // }
 
     disconnectClk(true);
 }

@@ -57,6 +57,12 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
-    "defs.h": "c"
+    ".env*": "dotenv",
+    "unistd.h": "c",
+    "ipc.h": "c",
+    "types.h": "c",
+    "string.h": "c",
+    "defs.h": "c",
+    "priorityqueue.h": "c"
   }
 }

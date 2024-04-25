@@ -17,8 +17,6 @@ int main(int argc, char const *argv[])
         if (timer != getTime())
         {
             timer++;
-            // Q what if I am interrupted?
-            printf("Process: Process still running at time: %d\n", getTime());
             executionTime--;
         }
     }

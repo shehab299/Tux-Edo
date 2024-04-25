@@ -1,4 +1,4 @@
-#include "../src/DataStructures/priorityQ.h"
+#include "../src/DataStructures/PriorityQueue.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,16 +12,16 @@ typedef struct dummy_ dummy;
 
 bool comp(void* x , void* y)
 {
-        dummy* d1 = (dummy*) x;
-        dummy* d2 = (dummy*) y;
-        return d1->time < d2->time;
+    dummy* d1 = (dummy*) x;
+    dummy* d2 = (dummy*) y;
+    return d1->time > d2->time;
 }
 
 
 int main(int argc, char const *argv[])
 {
 
-    Heap* myHeap = create_heap(150 , comp);
+    PriorityQueue* pq = (PriorityQueue*) pq_create(150 , comp);
     dummy* array[3];
 
     array[0] = malloc(sizeof(dummy));
@@ -32,13 +32,14 @@ int main(int argc, char const *argv[])
     array[1]->time = 1;
     array[2]->time = 2;
     
-    insert(array[0],myHeap);
-    insert(array[1],myHeap);
-    insert(array[2],myHeap);
+    pq_enqueue(array[0],pq);
+    pq_enqueue(array[1],pq);
+    pq_enqueue(array[2],pq);
 
-    deleteMin(myHeap);
+    pq_dequeue(pq);
+    pq_dequeue(pq);
 
-    dummy* x = minElement(myHeap);
+    dummy* x = pq_top(pq);
     printf("%d \n" , x->time);
 
     return 0;
