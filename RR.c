@@ -22,7 +22,7 @@
 //     PCB *running = getRunningProcess(readyQueue);
 //     if (running->state == started) // need when read the process from input file set state = 1
 //     {
-//       running->startingTime = getClk();
+//       running->startTime = getClk();
 //       startInterval = getClk();
 //       time = startInterval;
 //       printLog(running, getClk());

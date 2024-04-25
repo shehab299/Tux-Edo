@@ -1,19 +1,18 @@
 #include "Includes/defs.h"
 #include "./DataStructures/priorityQ.h"
 
-#define READY 1
-#define RUNNING 2
-#define TERMINATED 3
-
 int rec_val, msgQueueID;
 processMsg msg;
+int currentTime;
 PCB *running;
+PCB *top;
 
 typedef struct Scheduler
 {
     Heap *readyQueue;
     int numProcesses;
     int cpuUtilization;
+    // int currentTime;
     float avgWTA;
     float avgTA;
     float standardDeviation;
@@ -23,33 +22,6 @@ typedef struct Scheduler
 
 Scheduler *scheduler;
 
-PCB *createPCB(Process newProcess)
-{
-    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
-    if (newPCB == NULL)
-    {
-        perror("Error allocating memory for PCB");
-        exit(EXIT_FAILURE);
-    }
-    newPCB->next = NULL;
-    newPCB->pid = 0;
-    newPCB->id = newProcess.id;
-    newPCB->arrivalTime = newProcess.arrivalTime;
-    newPCB->runningTime = newProcess.runningTime;
-    newPCB->priority = newProcess.priority;
-    newPCB->waitingTime = 0;
-    newPCB->executionTime = 0;
-    newPCB->remainingTime = newPCB->runningTime;
-    newPCB->startingTime = 0;
-    newPCB->preemptedAt = 0;
-    newPCB->finishTime = 0;
-    newPCB->turnaround = 0;
-    newPCB->weightedTurnaround = 0.0;
-    newPCB->state = READY;
-
-    return newPCB;
-}
-
 bool comparePriority(void *a, void *b)
 {
     PCB *processA = (PCB *)a;
@@ -57,10 +29,25 @@ bool comparePriority(void *a, void *b)
     return processA->priority < processB->priority;
 }
 
-Scheduler *createScheduler()
+bool compareRemainingTime(void *a, void *b)
+{
+    PCB *processA = (PCB *)a;
+    PCB *processB = (PCB *)b;
+    return processA->remainingTime < processB->remainingTime;
+}
+
+Scheduler *createScheduler(int schedulingAlgo)
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
-    scheduler->readyQueue = create_heap(10, comparePriority);
+    if (schedulingAlgo == HPF)
+    {
+        scheduler->readyQueue = create_heap(10, comparePriority);
+    }
+    else if (schedulingAlgo == SRTN)
+    {
+        scheduler->readyQueue = create_heap(10, compareRemainingTime);
+    }
+    // scheduler->currentTime = getTime();
     scheduler->numProcesses = 0;
     scheduler->cpuUtilization = 0.0;
     scheduler->totalTA = 0.0;
@@ -73,15 +60,15 @@ Scheduler *createScheduler()
 
 void processTermination(int signum)
 {
-    printf("signal  termination Received\n");
     running->state = TERMINATED;
     running->finishTime = getTime();
+    running->waitingTime = running->arrivalTime - running->startTime;
     running->turnaround = running->finishTime - running->arrivalTime;
     running->weightedTurnaround = running->waitingTime / running->runningTime;
     scheduler->totalTA += running->turnaround;
     scheduler->totalWTA += running->weightedTurnaround;
-    printf("(Scheduler): Prcoss %d terminated! started at: %d, finished at: %d\n", running->id, running->startingTime, running->finishTime);
-
+    printf("(Scheduler): Prcoss %d terminated! started at: %d, finished at: %d\n", running->id, running->startTime, running->finishTime);
+    // free(running);
     signal(SIGUSR2, processTermination);
 }
 
@@ -92,7 +79,7 @@ void processMessageReceiver(int signum)
         rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), getpid() % 10000, IPC_NOWAIT);
         if (rec_val == -1 && errno == ENOMSG)
         {
-            printf("Scheduler: Message queue is empty\n");
+            // printf("Scheduler: Message queue is empty\n");
             break;
         }
         else if (rec_val == -1 && errno != ENOMSG)
@@ -101,14 +88,12 @@ void processMessageReceiver(int signum)
             break;
         }
 
-        printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
+        // printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
         PCB *newProcessPCB = createPCB(msg.newProcess);
-        // printf("Scheduler: PCB is created successfully: %d\n", newProcessPCB->arrivalTime);
-
         insert((void *)newProcessPCB, scheduler->readyQueue);
-        printf("Num of processes in ready: %d\n", getCount(scheduler->readyQueue));
+        // printf("Num of processes in ready: %d\n", getCount(scheduler->readyQueue));
         scheduler->numProcesses++;
-        printf("Scheduler: num of processes are now: %d\n", scheduler->numProcesses);
+        // printf("Scheduler: num of processes are now: %d\n", scheduler->numProcesses);
     }
     signal(SIGUSR1, processMessageReceiver);
 }
@@ -125,7 +110,7 @@ void HPFScheduler(Scheduler *scheduler)
     {
         running = (PCB *)minElement((void *)scheduler->readyQueue);
         running->state = RUNNING;
-        running->startingTime = getTime();
+        running->startTime = getTime();
         deleteMin(scheduler->readyQueue);
         printf("Scheduler: Running process with pid = %d, runningTime = %d, Priority: %d\n", running->id, running->runningTime, running->priority);
         int pid = fork();
@@ -144,13 +129,67 @@ void HPFScheduler(Scheduler *scheduler)
     }
 }
 
-int main()
+void SRTNScheduler(Scheduler *scheduler)
 {
-    scheduler = createScheduler();
+    int pid;
+    if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
+    {
+        running = (PCB *)minElement((void *)scheduler->readyQueue);
+        running->state = RUNNING;
+        deleteMin(scheduler->readyQueue);
+        if (running->startTime == 0)
+        {
+            running->startTime = getTime();
+        }
+
+        pid = fork();
+        if (pid == -1)
+        {
+            perror("Error in forking process\n");
+            exit(-1);
+        }
+        else if (pid == 0)
+        {
+            char remainingTimeStr[10];
+            sprintf(remainingTimeStr, "%d", running->remainingTime);
+
+            printf("Process %d proceeded at: %d\n", running->id, getTime());
+            execl("/home/asmaa/Desktop/Tux-Edo/process.out", "./process", remainingTimeStr, NULL);
+        }
+    }
+
+    if (currentTime != getTime())
+    {
+        running->remainingTime -= getTime() - currentTime;
+        // printf("NOT EQUAL!!!!!\n");
+        currentTime = getTime();
+    }
+
+    if (!isEmpty(scheduler->readyQueue))
+    {
+        top = (PCB *)minElement((void *)scheduler->readyQueue);
+        // printf("Process %d remaining time = %d at time = %d\n", running->id, running->remainingTime, getTime());
+        // printf("Top process id = %d remaining Time = %d at time = %d\n", top->id, top->remainingTime, getTime());
+
+        if (running->state != TERMINATED && top->remainingTime < running->remainingTime)
+        {
+            running->state = READY;
+            printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
+            insert((void *)running, scheduler->readyQueue);
+            kill(pid, SIGINT);
+        }
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    int selectedAlgo = atoi(argv[1]);
+    // printf("Selected algorithm: %d\n", selectedAlgo);
+    scheduler = createScheduler(selectedAlgo);
     signal(SIGUSR1, processMessageReceiver);
     signal(SIGUSR2, processTermination);
     signal(SIGINT, clearResources);
-    printf("Hello from scheduler!\n");
+    // printf("Hello from scheduler!\n");
 
     connectToClk();
 
@@ -170,17 +209,22 @@ int main()
     initProcess.runningTime = 0;
     initProcess.priority = 0;
     running = createPCB(initProcess);
+    top = createPCB(initProcess);
     running->state = READY;
+    currentTime = getTime();
     while (1)
     {
-        HPFScheduler(scheduler);
+        if (selectedAlgo == HPF)
+            HPFScheduler(scheduler);
+        else if (selectedAlgo == SRTN)
+        {
+
+            SRTNScheduler(scheduler);
+        }
+        // else
+        // {
+        //     RR(scheduler);
+        // }
     }
-
-    // while (getTime() < 35)
-    // {
-    //     sleep_ms(950);
-    //     printf("Scheduler still running\n");
-    // }
-
     disconnectClk(true);
 }

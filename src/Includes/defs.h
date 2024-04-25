@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdio.h>      
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -21,23 +21,27 @@ typedef short bool;
 
 #define SHKEY 300
 
+#define READY 1
+#define RUNNING 2
+#define TERMINATED 3
+
 typedef struct PCB
 {
-  struct PCB *next;
-  int pid;         // id from forking
-  int id;          // id from input file
-  int arrivalTime; // the time the process arrived at
-  int runningTime; // total time needed by the process to finish executing
-  int priority;
-  int waitingTime;   // total time the process spend at readu and block queue
-  int executionTime; //
-  int remainingTime;
-  int startingTime;
-  int preemptedAt; // last Time the process preempted at
-  int finishTime;
-  int turnaround;
-  float weightedTurnaround;
-  int state; // 10->started    11->resumed    12->stopped    13->finished   14->running
+    struct PCB *next;
+    int pid;
+    int id;
+    int arrivalTime;
+    int runningTime;
+    int priority;
+    int waitingTime;
+    int executionTime;
+    int remainingTime;
+    int startTime;
+    int preemptedAt;
+    int finishTime;
+    int turnaround;
+    float weightedTurnaround;
+    int state;
 } PCB;
 
 typedef struct Process
@@ -48,27 +52,55 @@ typedef struct Process
     int priority;
 } Process;
 
+PCB *createPCB(Process newProcess)
+{
+    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
+    if (newPCB == NULL)
+    {
+        perror("Error allocating memory for PCB");
+        exit(EXIT_FAILURE);
+    }
+    newPCB->next = NULL;
+    newPCB->pid = 0;
+    newPCB->id = newProcess.id;
+    newPCB->arrivalTime = newProcess.arrivalTime;
+    newPCB->runningTime = newProcess.runningTime;
+    newPCB->priority = newProcess.priority;
+    newPCB->waitingTime = 0;
+    newPCB->executionTime = 0;
+    newPCB->remainingTime = newProcess.runningTime;
+    newPCB->startTime = 0;
+    newPCB->preemptedAt = 0;
+    newPCB->finishTime = 0;
+    newPCB->turnaround = 0;
+    newPCB->weightedTurnaround = 0.0;
+    newPCB->state = READY;
+
+    return newPCB;
+}
+
 typedef struct processMsg
 {
     long mtype;
     Process newProcess;
 } processMsg;
 
-enum ProcessStates{
-	STARTED = 1,
-	RESUMED,
-	STOPPED,
-	FINISHED
+enum ProcessStates
+{
+    STARTED = 1,
+    RESUMED,
+    STOPPED,
+    FINISHED
 };
 
-enum SchedulingAlgorithm{
+enum SchedulingAlgorithm
+{
     HPF = 1,
     SRTN,
     RR
 };
 
-int* shmaddr; //No Need To Change It.
-
+int *shmaddr;
 
 int getTime()
 {
@@ -78,18 +110,17 @@ int getTime()
 void connectToClk()
 {
     int shmid = shmget(SHKEY, 4, 0444);
-    
+
     while ((int)shmid == -1)
     {
-        //Make sure that the clock exists
+        // Make sure that the clock exists
         printf("Wait! The clock not initialized yet!\n");
         sleep(1);
         shmid = shmget(SHKEY, 4, 0444);
     }
 
-    shmaddr = (int *) shmat(shmid, (void *)0, 0);
+    shmaddr = (int *)shmat(shmid, (void *)0, 0);
 }
-
 
 void disconnectClk(bool terminateAll)
 {
@@ -100,7 +131,8 @@ void disconnectClk(bool terminateAll)
     }
 }
 
-void sleep_ms(unsigned int milliseconds) {
+void sleep_ms(unsigned int milliseconds)
+{
     struct timespec req;
     req.tv_sec = milliseconds / 1000;
     req.tv_nsec = (milliseconds % 1000) * 1000000L;

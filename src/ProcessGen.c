@@ -53,7 +53,9 @@ int main(int argc, char *argv[])
     }
     else if (schedulerPid == 0)
     {
-        execl("./scheduler.out", "scheduler", NULL);
+        char selectedAlgoStr[10];
+        sprintf(selectedAlgoStr, "%d", selectedAlgo);
+        execl("./scheduler.out", "scheduler", selectedAlgoStr, NULL);
     }
 
     connectToClk();
@@ -74,7 +76,7 @@ int main(int argc, char *argv[])
     {
 
         time = getTime();
-        printf("current time is %d\n", time);
+        // printf("current time is %d\n", time);
 
         while (nextProcess && time == nextProcess->arrivalTime)
         {
@@ -87,13 +89,13 @@ int main(int argc, char *argv[])
         sleep_ms(500);
     }
 
-    printf("ProcessGen: done reading and sending.\n");
+    // printf("ProcessGen: done reading and sending.\n");
 
     int stat_loc;
     waitpid(schedulerPid, &stat_loc, 0);
 
     if (!(stat_loc & 0x00FF))
-        printf("ProcessGen: Scheduler terminated safely with exit code %d\n", stat_loc >> 8);
+        // printf("ProcessGen: Scheduler terminated safely with exit code %d\n", stat_loc >> 8);
 
     disconnectClk(true);
     return 0;
@@ -155,7 +157,7 @@ int createMessageQueue()
         exit(-1);
     }
 
-    printf("ProcessGen: message queue created with id %d\n", msgQueueID);
+    // printf("ProcessGen: message queue created with id %d\n", msgQueueID);
 
     return msgQueueID;
 }
@@ -168,5 +170,5 @@ void sendMessageToScheduler(int msgQueueID, processMsg *msg, Process *newProcess
     if (send_val == -1)
         perror("Errror in sending message to scheduler!");
 
-    printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
+    // printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
 }
