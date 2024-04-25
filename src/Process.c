@@ -5,30 +5,29 @@
 
 int main(int argc, char const *argv[])
 {
-    
+
     connectToClk();
 
     int executionTime = atoi(argv[1]);
     int timer = getTime();
-    
 
     printf("process started \n");
     while (executionTime != 0)
     {
-        if(timer != getTime())
+        if (timer != getTime())
         {
-            timer++; 
-            //Q what if I am interrupted?
+            timer++;
+            // Q what if I am interrupted?
+            printf("Process: Process still running at time: %d\n", getTime());
             executionTime--;
         }
     }
     printf("process finished \n");
 
-    //ON TERMINATION SENDS SIGNAL (SIGUSR1) TO PARENT
-    kill(getppid(),SIGUSR1);
+    // ON TERMINATION SENDS SIGNAL (SIGUSR1) TO PARENT
+    kill(getppid(), SIGUSR2);
 
-
-    disconnectClk(false);    
+    disconnectClk(false);
     exit(0);
     return 0;
 }

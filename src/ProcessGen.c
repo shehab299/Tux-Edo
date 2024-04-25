@@ -6,10 +6,10 @@
 #include "DataStructures/Queue.h"
 #include "Includes/defs.h"
 
-Queue* inputFile();
+Queue *inputFile();
 void clearResources(int);
 int createMessageQueue();
-void sendMessageToScheduler(int, processMsg*, Process*);
+void sendMessageToScheduler(int, processMsg *, Process *);
 
 int msgQueueID;
 
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, clearResources);
 
     // Reading input file
-    Queue* pQueue = inputFile();
+    Queue *pQueue = inputFile();
 
     // Taking user input for choice of scheduling algorithm and parameters if needed
     int selectedAlgo = userInput();
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     }
     else if (clkPid == 0)
     {
-        execl(strcat(argv[1], "/clk.out"), "clk", NULL);
+        execl("./clk.out", "clk", NULL);
     }
 
     // Forking scheduler process and changing core image
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     }
     else if (schedulerPid == 0)
     {
-        execl(strcat(argv[1], "/scheduler.out"), "scheduler", NULL);
+        execl("./scheduler.out", "scheduler", NULL);
     }
 
     connectToClk();
@@ -68,30 +68,32 @@ int main(int argc, char *argv[])
     // 7. Clear clock resources
 
     int time;
-    Process* nextProcess;
+    Process *nextProcess;
 
-    while((nextProcess = peek(pQueue)) != NULL) {
+    while ((nextProcess = peek(pQueue)) != NULL)
+    {
 
         time = getTime();
         printf("current time is %d\n", time);
 
-        while (nextProcess && time == nextProcess->arrivalTime) {
+        while (nextProcess && time == nextProcess->arrivalTime)
+        {
             kill(schedulerPid, SIGUSR1);
             sendMessageToScheduler(msgQueueID, &msg, nextProcess);
             dequeue(pQueue);
             nextProcess = peek(pQueue);
         }
-        
+
         sleep_ms(500);
     }
-    
+
     printf("ProcessGen: done reading and sending.\n");
 
     int stat_loc;
     waitpid(schedulerPid, &stat_loc, 0);
 
     if (!(stat_loc & 0x00FF))
-        printf("ProcessGen: Scheduler terminated safely with exit code\n", stat_loc >> 8);
+        printf("ProcessGen: Scheduler terminated safely with exit code %d\n", stat_loc >> 8);
 
     disconnectClk(true);
     return 0;
@@ -105,16 +107,16 @@ void clearResources(int signum)
     exit(0);
 }
 
-Queue* inputFile()
+Queue *inputFile()
 {
-    Process* newProcess;
+    Process *newProcess;
     FILE *fptr;
     fptr = fopen("processes.txt", "r");
     if (fptr == NULL)
         exit(-1);
     int id, arrival, runtime, priority;
     char ch;
-    Queue* pQueue = createQueue();
+    Queue *pQueue = createQueue();
 
     while ((ch = fgetc(fptr)) != EOF)
     {
@@ -142,7 +144,8 @@ Queue* inputFile()
     return pQueue;
 }
 
-int createMessageQueue() {
+int createMessageQueue()
+{
     key_t key_id = ftok("../keyfile", 65);
     int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
 
@@ -157,7 +160,7 @@ int createMessageQueue() {
     return msgQueueID;
 }
 
-void sendMessageToScheduler(int msgQueueID, processMsg* msg, Process* newProcess) 
+void sendMessageToScheduler(int msgQueueID, processMsg *msg, Process *newProcess)
 {
     msg->newProcess = *newProcess;
     int send_val = msgsnd(msgQueueID, msg, sizeof(msg->newProcess), !IPC_NOWAIT);
