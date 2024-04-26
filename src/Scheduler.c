@@ -1,5 +1,5 @@
 #include "Includes/defs.h"
-#include "./DataStructures/priorityQ.h"
+#include "ReadyQueue.h"
 
 int rec_val, msgQueueID;
 processMsg msg;
@@ -27,7 +27,7 @@ int createMessageQueue()
 
 typedef struct Scheduler
 {
-    Heap *readyQueue;
+    ReadyQueue *readyQueue;
     int numProcesses;
     int cpuUtilization;
     // int currentTime;
@@ -40,32 +40,11 @@ typedef struct Scheduler
 
 Scheduler *scheduler;
 
-bool comparePriority(void *a, void *b)
-{
-    PCB *processA = (PCB *)a;
-    PCB *processB = (PCB *)b;
-    return processA->priority < processB->priority;
-}
-
-bool compareRemainingTime(void *a, void *b)
-{
-    PCB *processA = (PCB *)a;
-    PCB *processB = (PCB *)b;
-    return processA->remainingTime < processB->remainingTime;
-}
 
 Scheduler *createScheduler(int schedulingAlgo)
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
-    if (schedulingAlgo == HPF)
-    {
-        scheduler->readyQueue = create_heap(10, comparePriority);
-    }
-    else if (schedulingAlgo == SRTN)
-    {
-        scheduler->readyQueue = create_heap(10, compareRemainingTime);
-    }
-    // scheduler->currentTime = getTime();
+    scheduler->readyQueue = createReadyQueue(schedulingAlgo);
     scheduler->numProcesses = 0;
     scheduler->cpuUtilization = 0.0;
     scheduler->totalTA = 0.0;
@@ -97,8 +76,7 @@ void processMessageReceiver(int signum)
         rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
         if (rec_val == -1 && errno == ENOMSG)
         {
-            // printf("Scheduler: Message queue is empty\n");
-            break;
+            break; //NO MESSAGES
         }
         else if (rec_val == -1 && errno != ENOMSG)
         {
@@ -107,7 +85,7 @@ void processMessageReceiver(int signum)
         }
 
         PCB *newProcessPCB = createPCB(msg.newProcess);
-        insert((void *)newProcessPCB, scheduler->readyQueue);
+        enqueue(newProcessPCB, scheduler->readyQueue);
         scheduler->numProcesses++;
     }
     goodToGo = 1;
@@ -132,12 +110,12 @@ void HPFScheduler(Scheduler *scheduler)
 
         while(!goodToGo);
         goodToGo = 0;
-        if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
+        if (running->state != RUNNING && !empty(scheduler->readyQueue))
         {
-            running = (PCB *)minElement((void *)scheduler->readyQueue);
+            running = peek(scheduler->readyQueue);
             running->state = RUNNING;
             running->startTime = getTime();
-            deleteMin(scheduler->readyQueue);
+            dequeue(scheduler->readyQueue);
 
             printf("Scheduler: Running process with pid = %d, runningTime = %d, Priority: %d\n", running->id, running->runningTime, running->priority);
             int pid = safe_fork();
@@ -170,9 +148,9 @@ void SRTNScheduler(Scheduler *scheduler)
         running->remainingTime -= 1;
         timer++;
 
-        if (!isEmpty(scheduler->readyQueue))
+        if (!empty(scheduler->readyQueue))
         {
-            top = (PCB *)minElement((void *)scheduler->readyQueue);
+            top = peek(scheduler->readyQueue);
             // printf("Process %d remaining time = %d at time = %d\n", running->id, running->remainingTime, getTime());
             // printf("Top process id = %d remaining Time = %d at time = %d\n", top->id, top->remainingTime, getTime());
 
@@ -180,16 +158,16 @@ void SRTNScheduler(Scheduler *scheduler)
             {
                 running->state = READY;
                 printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
-                insert((void *)running, scheduler->readyQueue);
+                enqueue(running, scheduler->readyQueue);
                 kill(pid, SIGINT);
             }
         } 
 
-        if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
+        if (running->state != RUNNING && !empty(scheduler->readyQueue))
         {
-            running = (PCB *)minElement((void *)scheduler->readyQueue);
+            running = peek(scheduler->readyQueue);
             running->state = RUNNING;
-            deleteMin(scheduler->readyQueue);
+            dequeue(scheduler->readyQueue);
 
             if (running->startTime == 0)
             {

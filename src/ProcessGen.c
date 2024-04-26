@@ -1,8 +1,4 @@
 #include "Includes/UI.h"
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "DataStructures/Queue.h"
 #include "Includes/defs.h"
 
@@ -19,8 +15,6 @@ int schedulerId;
 
 int main(int argc, char *argv[])
 {
-    int sem1 = *createSemaphore(SEM1KEY);
-    int sem2 = *createSemaphore(SEM2KEY);
     msgQueueID = createMessageQueue();
 
     signal(SIGINT, clearResources);

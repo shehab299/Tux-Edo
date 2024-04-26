@@ -12,12 +12,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <time.h>
 
-typedef short bool;
-#define true 1
-#define false 0
+
 
 #define SHKEY 300
 #define SEM1KEY 100
@@ -46,7 +45,7 @@ typedef struct PCB
     int state;
 } PCB;
 
-int redirectOutput()
+extern int redirectOutput()
 {
     FILE *output_file;
     output_file = fopen("output.txt", "w");
@@ -69,7 +68,7 @@ typedef struct Process
     int priority;
 } Process;
 
-PCB *createPCB(Process newProcess)
+extern PCB *createPCB(Process newProcess)
 {
     PCB *newPCB = (PCB *)malloc(sizeof(PCB));
     if (newPCB == NULL)
@@ -123,12 +122,12 @@ enum MessageTypes{
 
 int *shmaddr;
 
-int getTime()
+extern int getTime()
 {
     return *shmaddr;
 }
 
-void connectToClk()
+extern void connectToClk()
 {
     int shmid = shmget(SHKEY, 4, 0444);
 
@@ -143,7 +142,7 @@ void connectToClk()
     shmaddr = (int *)shmat(shmid, (void *)0, 0);
 }
 
-void disconnectClk(bool terminateAll)
+extern void disconnectClk(bool terminateAll)
 {
     shmdt(shmaddr);
     if (terminateAll)
@@ -152,7 +151,7 @@ void disconnectClk(bool terminateAll)
     }
 }
 
-void sleep_ms(unsigned int milliseconds)
+extern void sleep_ms(unsigned int milliseconds)
 {
     struct timespec req;
     req.tv_sec = milliseconds / 1000;
@@ -168,7 +167,7 @@ union Semun
     struct seminfo *__buf; 
 };
 
-void down(int sem)
+extern void down(int sem)
 {
     struct sembuf op;
 
@@ -183,7 +182,7 @@ void down(int sem)
     }
 }
 
-void up(int sem)
+extern void up(int sem)
 {
     struct sembuf op;
 
@@ -200,7 +199,7 @@ void up(int sem)
 
 
 
-int* createSemaphore(int key)
+extern int* createSemaphore(int key)
 {
     union Semun semun;
 
@@ -226,7 +225,7 @@ int* createSemaphore(int key)
 
 
 
-int safe_fork()
+extern int safe_fork()
 {
     int pid = fork();
 
@@ -239,7 +238,7 @@ int safe_fork()
     return pid;
 }
 
-FILE* safe_fopen(const char* path, const char* perms){
+extern FILE* safe_fopen(const char* path, const char* perms){
 
     FILE* fptr = fopen(path,perms);
 
