@@ -6,122 +6,108 @@
 #include "DataStructures/Queue.h"
 #include "Includes/defs.h"
 
-Queue *inputFile();
 void clearResources(int);
 int createMessageQueue();
-void sendMessageToScheduler(int, processMsg *, Process *);
+void sendMessageToScheduler(int, Process *);
+void initalizeQueue(char* filePath, Queue* queue);
+
+
 
 int msgQueueID;
 
 
-
 int main(int argc, char *argv[])
 {
+
+    int sem1 = *createSemaphore(SEM1KEY);
+    int sem2 = *createSemaphore(SEM2KEY);
+    msgQueueID = createMessageQueue();
+
     signal(SIGINT, clearResources);
 
-    // Reading input file
-    Queue *pQueue = inputFile();
+    if(argc < 2)
+    {
+        perror("Didn't Provide The Input File");
+        exit(-1);
+    }
 
-    // Taking user input for choice of scheduling algorithm and parameters if needed
+    Queue* pQueue = createQueue(); 
+    initalizeQueue("./processes.txt",pQueue);
+
     int selectedAlgo = userInput();
 
-    char *absolutePath = argv[1];
+    // FINISH INITIALIZATION
+    
+    int clkPid = safe_fork();
 
-    // Forking clock process and changing core image
-    int clkPid = fork();
-    if (clkPid == -1)
-    {
-        perror("Error in forking");
-        exit(-1);
-    }
-    else if (clkPid == 0)
-    {
-        execl("./clk.out", "clk", NULL);
-    }
-
-    // Forking scheduler process and changing core image
-    int schedulerPid = fork();
-    if (schedulerPid == -1)
-    {
-        perror("Error in forking");
-        exit(-1);
-    }
-    else if (schedulerPid == 0)
-    {
-        char selectedAlgoStr[10];
-        sprintf(selectedAlgoStr, "%d", selectedAlgo);
-        execl("./scheduler.out", "scheduler", selectedAlgoStr, NULL);
-    }
+    if (clkPid == 0)
+        execl("./clk.out", "./clk.out" , NULL);
 
     connectToClk();
 
-    // Creating message queue for communication with Scheduler
-    msgQueueID = createMessageQueue();
-    processMsg msg;
-    msg.mtype = schedulerPid % 10000;
+    int schedulerPid = safe_fork();
 
-    // TODO Generation Main Loop
-    // 6. Send the information to the scheduler at the appropriate time.
-    // 7. Clear clock resources
-
-    int time;
-    Process *nextProcess;
-
-    while ((nextProcess = peek(pQueue)) != NULL)
+    if (schedulerPid == 0)
     {
-
-    time = getTime();
-
-
-    int processesSent = 0;
-    while (nextProcess && time == nextProcess->arrivalTime)
-    {
-        sendMessageToScheduler(msgQueueID, &msg, nextProcess);
-        dequeue(pQueue);
-        nextProcess = peek(pQueue);
-
-        processesSent = 1;
+        char selectedAlgoStr[10];
+        sprintf(selectedAlgoStr, "%d", selectedAlgo);
+        if(execl("/home/shehab/Tux-Edo/scheduler.out", "./scheduler.out", selectedAlgoStr, NULL) == -1)
+        {
+            printf("Couldn't Load Scheduler Image");
+            exit(-1);
+        }
     }
 
-    if (processesSent)
+    //FINISH WORK
+    int timer = getTime();
+    Process* nextProcess = peek(pQueue);
+
+    while(true)
     {
-        kill(schedulerPid, SIGUSR1);
+        if(timer == getTime())
+            continue;
+        
+        int send = 0;
+        printf("Time Is %d \n" , ++timer);
+
+        while (nextProcess && timer == nextProcess->arrivalTime)
+        {
+            sendMessageToScheduler(msgQueueID,nextProcess);
+            dequeue(pQueue);
+            nextProcess = peek(pQueue);
+
+            send = 1;
+        }
+
+        if (true)
+        {
+            kill(schedulerPid, SIGUSR1);
+            printf("Sent Signal To Scheduler \n");
+        }
+
+        up(sem1);
+        sleep_ms(500);
     }
 
-    sleep_ms(500);
-
-    }
-
-    // printf("ProcessGen: done reading and sending.\n");
-
-    int stat_loc;
-    waitpid(schedulerPid, &stat_loc, 0);
-
-    if (!(stat_loc & 0x00FF))
-        // printf("ProcessGen: Scheduler terminated safely with exit code %d\n", stat_loc >> 8);
-
-    disconnectClk(true);
     return 0;
 }
 
 void clearResources(int signum)
 {
-    // TODO Clears all resources in case of interruption
     msgctl(msgQueueID, IPC_RMID, (struct msqid_ds *)0);
     disconnectClk(true);
     exit(0);
 }
 
-Queue *inputFile()
+void initalizeQueue(char* filePath, Queue* pQueue)
 {
     Process *newProcess;
     FILE *fptr;
-    fptr = fopen("processes.txt", "r");
-    if (fptr == NULL)
-        exit(-1);
+
+    fptr = safe_fopen(filePath, "r");
+    
     int id, arrival, runtime, priority;
     char ch;
-    Queue *pQueue = createQueue();
 
     while ((ch = fgetc(fptr)) != EOF)
     {
@@ -145,8 +131,6 @@ Queue *inputFile()
             printf("Successfully read process with id %d\n", id);
         }
     }
-
-    return pQueue;
 }
 
 int createMessageQueue()
@@ -160,16 +144,19 @@ int createMessageQueue()
         exit(-1);
     }
 
+    printf("ProcessGen: message queue created with id %d\n", msgQueueID);
+
     return msgQueueID;
 }
 
-void sendMessageToScheduler(int msgQueueID, processMsg *msg, Process *newProcess)
+void sendMessageToScheduler(int msgQueueID, Process *newProcess)
 {
-    msg->newProcess = *newProcess;
-    int send_val = msgsnd(msgQueueID, msg, sizeof(msg->newProcess), !IPC_NOWAIT);
+    processMsg msg = {.mtype = SCHEDULER_TYPE , .newProcess = *newProcess};
+
+    int send_val = msgsnd(msgQueueID, &msg, sizeof(Process), !IPC_NOWAIT);
 
     if (send_val == -1)
         perror("Errror in sending message to scheduler!");
 
-    // printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
+    printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
 }

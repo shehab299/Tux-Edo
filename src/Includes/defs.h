@@ -20,6 +20,8 @@ typedef short bool;
 #define false 0
 
 #define SHKEY 300
+#define SEM1KEY 100
+#define SEM2KEY 200
 
 #define READY 1
 #define RUNNING 2
@@ -100,6 +102,10 @@ enum SchedulingAlgorithm
     RR
 };
 
+enum MessageTypes{
+    SCHEDULER_TYPE = 505,
+};
+
 int *shmaddr;
 
 int getTime()
@@ -137,4 +143,96 @@ void sleep_ms(unsigned int milliseconds)
     req.tv_sec = milliseconds / 1000;
     req.tv_nsec = (milliseconds % 1000) * 1000000L;
     nanosleep(&req, NULL);
+}
+
+union Semun
+{
+    int val;        
+    struct semid_ds *buf;  
+    unsigned short *array; 
+    struct seminfo *__buf; 
+};
+
+void down(int sem)
+{
+    struct sembuf op;
+
+    op.sem_num = 0;
+    op.sem_op = -1;
+    op.sem_flg = !IPC_NOWAIT;
+
+    if (semop(sem, &op, 1) == -1)
+    {
+        perror("Error in down()");
+        exit(-1);
+    }
+}
+
+void up(int sem)
+{
+    struct sembuf op;
+
+    op.sem_num = 0;
+    op.sem_op = 1;
+    op.sem_flg = !IPC_NOWAIT;
+
+    if (semop(sem, &op, 1) == -1)
+    {
+        perror("Error in up()");
+        exit(-1);
+    }
+}
+
+
+
+int* createSemaphore(int key)
+{
+    union Semun semun;
+
+    int* sem = malloc(sizeof(int));
+    *sem = semget(key, 1, 0666 | IPC_CREAT);
+
+    if(*sem == -1)
+    {
+        perror("Error in create sem");
+        exit(-1);
+    }
+
+    semun.val = 0;
+
+    if (semctl(*sem, 0, SETVAL, semun) == -1)
+    {
+        perror("Error in semctl");
+        exit(-1);
+    }
+
+    return sem;
+}
+
+
+
+int safe_fork()
+{
+    int pid = fork();
+
+    if(pid == -1)
+    {
+        perror("Error in forking");
+        exit(-1);
+    }
+
+    return pid;
+}
+
+FILE* safe_fopen(const char* path, const char* perms){
+
+    FILE* fptr = fopen(path,perms);
+
+    if(fptr == NULL)
+    {
+        perror("Couldn't Open Seed File");
+        exit(-1);   
+    }
+
+    return fptr;
 }

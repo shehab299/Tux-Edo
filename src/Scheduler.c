@@ -6,6 +6,9 @@ processMsg msg;
 int currentTime;
 PCB *running;
 PCB *top;
+int sem1;
+int sem2;
+int goodToGo = 0;
 
 int createMessageQueue()
 {
@@ -91,7 +94,7 @@ void processMessageReceiver(int signum)
 {
     while (true)
     {
-        rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), getpid() % 10000, IPC_NOWAIT);
+        rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
         if (rec_val == -1 && errno == ENOMSG)
         {
             // printf("Scheduler: Message queue is empty\n");
@@ -107,6 +110,7 @@ void processMessageReceiver(int signum)
         insert((void *)newProcessPCB, scheduler->readyQueue);
         scheduler->numProcesses++;
     }
+    goodToGo = 1;
     signal(SIGUSR1, processMessageReceiver);
 }
 
@@ -118,27 +122,36 @@ void clearResources(int signum)
 
 void HPFScheduler(Scheduler *scheduler)
 {
-    if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
-    {
-        running = (PCB *)minElement((void *)scheduler->readyQueue);
-        running->state = RUNNING;
-        running->startTime = getTime();
-        deleteMin(scheduler->readyQueue);
-        printf("Scheduler: Running process with pid = %d, runningTime = %d, Priority: %d\n", running->id, running->runningTime, running->priority);
-        int pid = fork();
 
-        if (pid == -1)
+    int timer = getTime();
+
+    while(true)
+    {
+        if(timer == getTime())
+            continue;
+
+        while(!goodToGo);
+        goodToGo = 0;
+        if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
         {
-            perror("Error in forking process\n");
-            exit(-1);
-        }
-        else if (pid == 0)
-        {
-            char runningTimeStr[10];
-            sprintf(runningTimeStr, "%d", running->runningTime);
-            execl("/home/asmaa/Desktop/Tux-Edo/process.out", "./process", runningTimeStr, NULL);
+            running = (PCB *)minElement((void *)scheduler->readyQueue);
+            running->state = RUNNING;
+            running->startTime = getTime();
+            deleteMin(scheduler->readyQueue);
+
+            printf("Scheduler: Running process with pid = %d, runningTime = %d, Priority: %d\n", running->id, running->runningTime, running->priority);
+            int pid = safe_fork();
+
+            if (pid == 0)
+            {
+                char runningTimeStr[10];
+                sprintf(runningTimeStr, "%d", running->runningTime);
+                execl("./process.out", "./process", runningTimeStr, NULL);
+            }
+
         }
     }
+
 }
 
 void SRTNScheduler(Scheduler *scheduler)
@@ -166,7 +179,7 @@ void SRTNScheduler(Scheduler *scheduler)
             sprintf(remainingTimeStr, "%d", running->remainingTime);
 
             printf("Process %d proceeded at: %d\n", running->id, getTime());
-            execl("/home/asmaa/Desktop/Tux-Edo/process.out", "./process", remainingTimeStr, NULL);
+            execl("./process.out", "./process.out", remainingTimeStr, NULL);
         }
     }
 
@@ -193,42 +206,37 @@ void SRTNScheduler(Scheduler *scheduler)
     }
 }
 
+
 int main(int argc, char *argv[])
 {
-    int selectedAlgo = atoi(argv[1]);
-    // printf("Selected algorithm: %d\n", selectedAlgo);
+    msgQueueID = createMessageQueue();
+    connectToClk();
+
+    int selectedAlgo = atoi(argv[1]);   
+    printf("%d", selectedAlgo); 
     scheduler = createScheduler(selectedAlgo);
+    
     signal(SIGUSR1, processMessageReceiver);
     signal(SIGUSR2, processTermination);
     signal(SIGINT, clearResources);
-    // printf("Hello from scheduler!\n");
 
-    connectToClk();
+    msg.mtype = SCHEDULER_TYPE;
 
-    msgQueueID = createMessageQueue();
-
-    msg.mtype = getpid() % 10000;
     Process initProcess = {.id=-1,.arrivalTime=0,.priority=0,.runningTime=0};
-    running = createPCB(initProcess);
     top = createPCB(initProcess);
+
+    running = createPCB(initProcess);
     running->state = READY;
 
     currentTime = getTime();
 
-    while (1)
-    {
-        if (selectedAlgo == HPF)
-            HPFScheduler(scheduler);
-        else if (selectedAlgo == SRTN)
-        {
-            SRTNScheduler(scheduler);
-        }
+    if(selectedAlgo == HPF)
+        HPFScheduler(scheduler);
+    else if(selectedAlgo == SRTN) 
+        SRTNScheduler(scheduler);
+    else
+        //RR WORK
 
-        // else
-        // {
-        //     RR(scheduler);
-        // }
-    }
     disconnectClk(true);
 }
 
