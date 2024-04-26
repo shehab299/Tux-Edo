@@ -11,6 +11,56 @@ struct PriorityQueue
     bool (*comp)(void*,void*);
 };
 
+
+int parentIndex(int in){
+    return ((in -1 ) / 2);
+}
+
+int leftIndex(int in){
+    return (2 * in) + 1;
+}
+
+int rightIndex(int in){
+    return (2 * in) + 2;
+}
+
+void resize(void* _queue){
+
+    PriorityQueue* queue = (PriorityQueue*) _queue;
+    queue->minHeap = realloc(queue->minHeap,2 * queue->capacity);
+    queue->capacity *= 2;
+}
+
+void minqueueify(int key, void* _queue)
+{
+
+    PriorityQueue* queue = (PriorityQueue*) _queue;
+
+    if(key >= queue->count)
+        return;
+
+    int left = leftIndex(key);
+    int right = rightIndex(key);
+    int smlest = key;
+
+    int count = queue->count;
+
+
+    if(left < count && queue->comp(queue->minHeap[left],queue->minHeap[smlest]))
+        smlest = left;
+    
+    if(right < count && queue->comp(queue->minHeap[right],queue->minHeap[smlest]))
+        smlest = right;
+
+    if(smlest != key)
+    {
+        void* temp = queue->minHeap[key];
+        queue->minHeap[key] = queue->minHeap[smlest];
+        queue->minHeap[smlest] = temp;
+    }
+}
+
+
 void* pq_create(int size,bool (*comp)(void*,void*)){
 
     PriorityQueue* q = malloc(sizeof(struct PriorityQueue));
@@ -87,46 +137,6 @@ void pq_enqueue(void* k, void* _queue){
 }
 
 
-int parentIndex(int in){
-    return ((in -1 ) / 2);
-}
-
-int leftIndex(int in){
-    return (2 * in) + 1;
-}
-
-int rightIndex(int in){
-    return (2 * in) + 2;
-}
-
-void minqueueify(int key, void* _queue)
-{
-
-    PriorityQueue* queue = (PriorityQueue*) _queue;
-
-    if(key >= queue->count)
-        return;
-
-    int left = leftIndex(key);
-    int right = rightIndex(key);
-    int smlest = key;
-
-    int count = queue->count;
-
-
-    if(left < count && queue->comp(queue->minHeap[left],queue->minHeap[smlest]))
-        smlest = left;
-    
-    if(right < count && queue->comp(queue->minHeap[right],queue->minHeap[smlest]))
-        smlest = right;
-
-    if(smlest != key)
-    {
-        void* temp = queue->minHeap[key];
-        queue->minHeap[key] = queue->minHeap[smlest];
-        queue->minHeap[smlest] = temp;
-    }
-}
 
 void* pq_top(void* _queue){
 
@@ -135,10 +145,5 @@ void* pq_top(void* _queue){
     return queue->minHeap[0];
 }
 
-void resize(void* _queue){
 
-    PriorityQueue* queue = (PriorityQueue*) _queue;
-    queue->minHeap = realloc(queue->minHeap,2 * queue->capacity);
-    queue->capacity *= 2;
-}
 
