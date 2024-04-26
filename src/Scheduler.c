@@ -156,59 +156,72 @@ void HPFScheduler(Scheduler *scheduler)
 
 void SRTNScheduler(Scheduler *scheduler)
 {
+    int timer = getTime();
     int pid;
-    if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
+
+    while(true)
     {
-        running = (PCB *)minElement((void *)scheduler->readyQueue);
-        running->state = RUNNING;
-        deleteMin(scheduler->readyQueue);
-        if (running->startTime == 0)
+        if(timer == getTime())
+            continue;
+
+        while(!goodToGo);
+        goodToGo = 0;
+
+        running->remainingTime -= 1;
+        timer++;
+
+        if (!isEmpty(scheduler->readyQueue))
         {
-            running->startTime = getTime();
-        }
+            top = (PCB *)minElement((void *)scheduler->readyQueue);
+            // printf("Process %d remaining time = %d at time = %d\n", running->id, running->remainingTime, getTime());
+            // printf("Top process id = %d remaining Time = %d at time = %d\n", top->id, top->remainingTime, getTime());
 
-        pid = fork();
-        if (pid == -1)
+            if (running->state != TERMINATED && top->remainingTime < running->remainingTime)
+            {
+                running->state = READY;
+                printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
+                insert((void *)running, scheduler->readyQueue);
+                kill(pid, SIGINT);
+            }
+        } 
+
+        if (running->state != RUNNING && !isEmpty(scheduler->readyQueue))
         {
-            perror("Error in forking process\n");
-            exit(-1);
-        }
-        else if (pid == 0)
-        {
-            char remainingTimeStr[10];
-            sprintf(remainingTimeStr, "%d", running->remainingTime);
+            running = (PCB *)minElement((void *)scheduler->readyQueue);
+            running->state = RUNNING;
+            deleteMin(scheduler->readyQueue);
 
-            printf("Process %d proceeded at: %d\n", running->id, getTime());
-            execl("./process.out", "./process.out", remainingTimeStr, NULL);
-        }
-    }
+            if (running->startTime == 0)
+            {
+                running->startTime = getTime();
+            }
 
-    if (currentTime != getTime())
-    {
-        running->remainingTime -= getTime() - currentTime;
-        // printf("NOT EQUAL!!!!!\n");
-        currentTime = getTime();
-    }
+            pid = safe_fork();
 
-    if (!isEmpty(scheduler->readyQueue))
-    {
-        top = (PCB *)minElement((void *)scheduler->readyQueue);
-        // printf("Process %d remaining time = %d at time = %d\n", running->id, running->remainingTime, getTime());
-        // printf("Top process id = %d remaining Time = %d at time = %d\n", top->id, top->remainingTime, getTime());
+            if (pid == 0)
+            {
+                char remainingTimeStr[10];
+                sprintf(remainingTimeStr, "%d", running->remainingTime);
 
-        if (running->state != TERMINATED && top->remainingTime < running->remainingTime)
-        {
-            running->state = READY;
-            printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
-            insert((void *)running, scheduler->readyQueue);
-            kill(pid, SIGINT);
-        }
+                printf("Process %d proceeded at: %d\n", running->id, getTime());
+                execl("./process.out", "./process.out", remainingTimeStr, NULL);
+            }
+        }        
+        
+
     }
 }
 
 
 int main(int argc, char *argv[])
 {
+    printf("HELLO FROM SCHEDULER \n");
+
+    signal(SIGUSR1, processMessageReceiver);
+    signal(SIGUSR2, processTermination);
+    signal(SIGINT, clearResources);
+
+
     msgQueueID = createMessageQueue();
     connectToClk();
 
@@ -216,10 +229,6 @@ int main(int argc, char *argv[])
     printf("%d", selectedAlgo); 
     scheduler = createScheduler(selectedAlgo);
     
-    signal(SIGUSR1, processMessageReceiver);
-    signal(SIGUSR2, processTermination);
-    signal(SIGINT, clearResources);
-
     msg.mtype = SCHEDULER_TYPE;
 
     Process initProcess = {.id=-1,.arrivalTime=0,.priority=0,.runningTime=0};
