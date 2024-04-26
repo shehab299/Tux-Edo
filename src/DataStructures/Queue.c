@@ -70,3 +70,7 @@ Queue* createQueue() {
 
     return q;
 }
+
+int getSize(Queue* q){
+    return q->count;
+}

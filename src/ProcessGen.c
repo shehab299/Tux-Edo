@@ -18,7 +18,6 @@ int msgQueueID;
 
 int main(int argc, char *argv[])
 {
-
     int sem1 = *createSemaphore(SEM1KEY);
     int sem2 = *createSemaphore(SEM2KEY);
     msgQueueID = createMessageQueue();
@@ -34,9 +33,10 @@ int main(int argc, char *argv[])
     Queue* pQueue = createQueue(); 
     initalizeQueue("./processes.txt",pQueue);
 
-    int selectedAlgo = userInput();
 
-    // FINISH INITIALIZATION
+    int selectedAlgo = userInput();
+    printf("%d \n",getSize(pQueue));
+
     
     int clkPid = safe_fork();
 
@@ -51,11 +51,7 @@ int main(int argc, char *argv[])
     {
         char selectedAlgoStr[10];
         sprintf(selectedAlgoStr, "%d", selectedAlgo);
-        if(execl("/home/shehab/Tux-Edo/scheduler.out", "./scheduler.out", selectedAlgoStr, NULL) == -1)
-        {
-            printf("Couldn't Load Scheduler Image");
-            exit(-1);
-        }
+        execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
 
     //FINISH WORK
@@ -68,10 +64,12 @@ int main(int argc, char *argv[])
             continue;
         
         int send = 0;
-        printf("Time Is %d \n" , ++timer);
+        //printf("Time Is %d \n" , ++timer);
 
-        while (nextProcess && timer == nextProcess->arrivalTime)
+        printf("%p && %d \n",nextProcess,nextProcess->arrivalTime);
+        while (nextProcess != NULL && timer == nextProcess->arrivalTime)
         {
+            printf("1 \n");
             sendMessageToScheduler(msgQueueID,nextProcess);
             dequeue(pQueue);
             nextProcess = peek(pQueue);
@@ -79,11 +77,8 @@ int main(int argc, char *argv[])
             send = 1;
         }
 
-        if (true)
-        {
-            kill(schedulerPid, SIGUSR1);
-            printf("Sent Signal To Scheduler \n");
-        }
+
+        kill(schedulerPid, SIGUSR1);
 
         up(sem1);
         sleep_ms(500);

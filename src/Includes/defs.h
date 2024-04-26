@@ -46,6 +46,21 @@ typedef struct PCB
     int state;
 } PCB;
 
+int redirectOutput()
+{
+    FILE *output_file;
+    output_file = fopen("output.txt", "w");
+
+    if (output_file == NULL) {
+        fprintf(stderr, "Error opening file.\n");
+        return 1; 
+    }
+
+    freopen("output.txt", "w", stdout);
+    return 0;
+}
+
+
 typedef struct Process
 {
     int id;
