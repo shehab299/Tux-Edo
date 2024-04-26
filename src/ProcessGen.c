@@ -15,6 +15,7 @@ void initalizeQueue(char* filePath, Queue* queue);
 
 int msgQueueID;
 
+int schedulerId;
 
 int main(int argc, char *argv[])
 {
@@ -45,14 +46,16 @@ int main(int argc, char *argv[])
 
     connectToClk();
 
-    int schedulerPid = safe_fork();
+    schedulerId = fork();
 
-    if (schedulerPid == 0)
+    if (schedulerId == 0)
     {
         char selectedAlgoStr[10];
         sprintf(selectedAlgoStr, "%d", selectedAlgo);
-        execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
+        execl("/home/shehab/Tux-Edo/scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
+
+    sleep_ms(100);
 
     //FINISH WORK
     int timer = getTime();
@@ -64,9 +67,8 @@ int main(int argc, char *argv[])
             continue;
         
         int send = 0;
-        //printf("Time Is %d \n" , ++timer);
+        printf("Time Is %d \n" , ++timer);
 
-        printf("%p && %d \n",nextProcess,nextProcess->arrivalTime);
         while (nextProcess != NULL && timer == nextProcess->arrivalTime)
         {
             printf("1 \n");
@@ -77,10 +79,9 @@ int main(int argc, char *argv[])
             send = 1;
         }
 
+        printf("sending signal \n");
+        kill(schedulerId, SIGUSR1);
 
-        kill(schedulerPid, SIGUSR1);
-
-        up(sem1);
         sleep_ms(500);
     }
 
@@ -90,6 +91,7 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     msgctl(msgQueueID, IPC_RMID, (struct msqid_ds *)0);
+    kill(schedulerId,SIGINT);
     disconnectClk(true);
     exit(0);
 }

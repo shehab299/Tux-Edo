@@ -209,6 +209,13 @@ void SRTNScheduler(Scheduler *scheduler)
 
 int main(int argc, char *argv[])
 {
+    printf("HELLO FROM SCHEDULER \n");
+
+    signal(SIGUSR1, processMessageReceiver);
+    signal(SIGUSR2, processTermination);
+    signal(SIGINT, clearResources);
+
+
     msgQueueID = createMessageQueue();
     connectToClk();
 
@@ -216,10 +223,6 @@ int main(int argc, char *argv[])
     printf("%d", selectedAlgo); 
     scheduler = createScheduler(selectedAlgo);
     
-    signal(SIGUSR1, processMessageReceiver);
-    signal(SIGUSR2, processTermination);
-    signal(SIGINT, clearResources);
-
     msg.mtype = SCHEDULER_TYPE;
 
     Process initProcess = {.id=-1,.arrivalTime=0,.priority=0,.runningTime=0};
