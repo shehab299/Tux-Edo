@@ -161,22 +161,24 @@ void SRTNScheduler(Scheduler *scheduler)
         running->remainingTime -= 1;
         timer++;
 
-        if (!empty(scheduler->readyQueue))
+        if (empty(scheduler->readyQueue))
         {
-            top = peek(scheduler->readyQueue);
-
-            if (running->state != FINISHED && top->remainingTime < running->remainingTime)
-            {
-                running->state = STOPPED;
-                printf("process %d %s at time %d, remainig time = %d\n",
-                       running->id, state(running->state),
-                       running->remainingTime, getTime());
-                enqueue(running, scheduler->readyQueue);
-                kill(pid, SIGINT);
-            }
+            continue;
         }
 
-        if (running->state != STARTED && running->state != RESUMED && !empty(scheduler->readyQueue))
+        top = peek(scheduler->readyQueue);
+
+        if (running->state != FINISHED && top->remainingTime < running->remainingTime)
+        {
+            running->state = STOPPED;
+            printf("process %d %s at time %d, remainig time = %d\n",
+                   running->id, state(running->state),
+                   running->remainingTime, getTime());
+            enqueue(running, scheduler->readyQueue);
+            kill(pid, SIGINT);
+        }
+
+        if (running->state != STARTED && running->state != RESUMED)
         {
             running = peek(scheduler->readyQueue);
             dequeue(scheduler->readyQueue);
