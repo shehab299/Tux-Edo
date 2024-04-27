@@ -132,7 +132,7 @@ int createMessageQueue()
         exit(-1);
     }
 
-    printf("ProcessGen: message queue created with id %d\n", msgQueueID);
+    // printf("ProcessGen: message queue created with id %d\n", msgQueueID);
 
     return msgQueueID;
 }
@@ -146,5 +146,5 @@ void sendMessageToScheduler(int msgQueueID, Process *newProcess)
     if (send_val == -1)
         perror("Errror in sending message to scheduler!");
 
-    printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
+    // printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
 }

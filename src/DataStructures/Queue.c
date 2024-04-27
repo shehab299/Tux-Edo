@@ -65,7 +65,7 @@ void q_enqueue(void* q_, void* element) {
     q->tail->next = newNode;
     q->tail = newNode;
     q->count++;
-    printf("Enqueued element!");
+    // printf("Enqueued element!");
 }
 
 void* createQueue() {
