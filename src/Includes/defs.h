@@ -16,15 +16,9 @@
 #include <errno.h>
 #include <time.h>
 
-
-
 #define SHKEY 300
 #define SEM1KEY 100
 #define SEM2KEY 200
-
-#define READY 1
-#define RUNNING 2
-#define TERMINATED 3
 
 typedef struct PCB
 {
@@ -38,6 +32,7 @@ typedef struct PCB
     int executionTime;
     int remainingTime;
     int startTime;
+    int responseTime;
     int preemptedAt;
     int finishTime;
     int turnaround;
@@ -50,15 +45,15 @@ extern int redirectOutput()
     FILE *output_file;
     output_file = fopen("output.txt", "w");
 
-    if (output_file == NULL) {
+    if (output_file == NULL)
+    {
         fprintf(stderr, "Error opening file.\n");
-        return 1; 
+        return 1;
     }
 
     freopen("output.txt", "w", stdout);
     return 0;
 }
-
 
 typedef struct Process
 {
@@ -67,34 +62,6 @@ typedef struct Process
     int runningTime;
     int priority;
 } Process;
-
-extern PCB *createPCB(Process newProcess)
-{
-    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
-    if (newPCB == NULL)
-    {
-        perror("Error allocating memory for PCB");
-        exit(EXIT_FAILURE);
-    }
-    newPCB->next = NULL;
-    newPCB->pid = 0;
-    newPCB->id = newProcess.id;
-    newPCB->arrivalTime = newProcess.arrivalTime;
-    newPCB->runningTime = newProcess.runningTime;
-    newPCB->priority = newProcess.priority;
-    newPCB->waitingTime = 0;
-    newPCB->executionTime = 0;
-    newPCB->remainingTime = newProcess.runningTime;
-    newPCB->startTime = 0;
-    newPCB->preemptedAt = 0;
-    newPCB->finishTime = 0;
-    newPCB->turnaround = 0;
-    newPCB->weightedTurnaround = 0.0;
-    newPCB->state = READY;
-
-    return newPCB;
-}
-
 typedef struct processMsg
 {
     long mtype;
@@ -116,7 +83,35 @@ enum SchedulingAlgorithm
     RR
 };
 
-enum MessageTypes{
+extern PCB *createPCB(Process newProcess)
+{
+    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
+    if (newPCB == NULL)
+    {
+        perror("Error allocating memory for PCB");
+        exit(EXIT_FAILURE);
+    }
+    newPCB->pid = 0;
+    newPCB->id = newProcess.id;
+    newPCB->arrivalTime = newProcess.arrivalTime;
+    newPCB->runningTime = newProcess.runningTime;
+    newPCB->priority = newProcess.priority;
+    newPCB->waitingTime = 0;
+    newPCB->executionTime = 0;
+    newPCB->remainingTime = newProcess.runningTime;
+    newPCB->startTime = 0;
+    newPCB->responseTime = 0;
+    newPCB->preemptedAt = 0;
+    newPCB->finishTime = 0;
+    newPCB->turnaround = 0;
+    newPCB->weightedTurnaround = 0.0;
+    newPCB->state = STOPPED;
+
+    return newPCB;
+}
+
+enum MessageTypes
+{
     SCHEDULER_TYPE = 505,
 };
 
@@ -161,10 +156,10 @@ extern void sleep_ms(unsigned int milliseconds)
 
 union Semun
 {
-    int val;        
-    struct semid_ds *buf;  
-    unsigned short *array; 
-    struct seminfo *__buf; 
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+    struct seminfo *__buf;
 };
 
 extern void down(int sem)
@@ -197,16 +192,14 @@ extern void up(int sem)
     }
 }
 
-
-
-extern int* createSemaphore(int key)
+extern int *createSemaphore(int key)
 {
     union Semun semun;
 
-    int* sem = malloc(sizeof(int));
+    int *sem = malloc(sizeof(int));
     *sem = semget(key, 1, 0666 | IPC_CREAT);
 
-    if(*sem == -1)
+    if (*sem == -1)
     {
         perror("Error in create sem");
         exit(-1);
@@ -223,13 +216,11 @@ extern int* createSemaphore(int key)
     return sem;
 }
 
-
-
 extern int safe_fork()
 {
     int pid = fork();
 
-    if(pid == -1)
+    if (pid == -1)
     {
         perror("Error in forking");
         exit(-1);
@@ -238,14 +229,15 @@ extern int safe_fork()
     return pid;
 }
 
-extern FILE* safe_fopen(const char* path, const char* perms){
+extern FILE *safe_fopen(const char *path, const char *perms)
+{
 
-    FILE* fptr = fopen(path,perms);
+    FILE *fptr = fopen(path, perms);
 
-    if(fptr == NULL)
+    if (fptr == NULL)
     {
         perror("Couldn't Open Seed File");
-        exit(-1);   
+        exit(-1);
     }
 
     return fptr;
