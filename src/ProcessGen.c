@@ -3,12 +3,10 @@
 #include "Includes/defs.h"
 
 void clearResources(int);
-int createMessageQueue();
 void sendMessageToScheduler(int, Process *);
 void initalizeQueue(char *filePath, Queue *queue);
 
 int msgQueueID;
-
 int schedulerId;
 
 int main(int argc, char *argv[])
@@ -126,22 +124,6 @@ void initalizeQueue(char *filePath, Queue *pQueue)
             printf("Successfully read process with id %d\n", id);
         }
     }
-}
-
-int createMessageQueue()
-{
-    key_t key_id = ftok("../keyfile", 65);
-    int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
-
-    if (msgQueueID == -1)
-    {
-        perror("Error in creating message queue!");
-        exit(-1);
-    }
-
-    // printf("ProcessGen: message queue created with id %d\n", msgQueueID);
-
-    return msgQueueID;
 }
 
 void sendMessageToScheduler(int msgQueueID, Process *newProcess)

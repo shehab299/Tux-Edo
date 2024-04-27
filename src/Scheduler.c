@@ -1,42 +1,15 @@
 #include "Includes/defs.h"
 #include "ReadyQueue.h"
+#include "Includes/OutputFile.h"
 
-int rec_val, msgQueueID;
-processMsg msg;
+int msgQueueID;
 PCB *running;
 PCB *top;
 int waitingForSignal = 1;
 
-const char *state(enum ProcessStates state)
-{
-    switch (state)
-    {
-    case STARTED:
-        return "started";
-    case RESUMED:
-        return "resumed";
-    case STOPPED:
-        return "stopped";
-    case FINISHED:
-        return "finished";
-    default:
-        return "Unknown";
-    }
-}
+FILE* outputFile;
+FILE* perfFile;
 
-int createMessageQueue()
-{
-    key_t key_id = ftok("../keyfile", 65);
-    int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
-
-    if (msgQueueID == -1)
-    {
-        perror("Error in creating message queue!");
-        exit(-1);
-    }
-
-    return msgQueueID;
-}
 
 typedef struct Scheduler
 {
@@ -66,21 +39,8 @@ Scheduler *createScheduler(int schedulingAlgo)
     return scheduler;
 }
 
-void processTermination(int signum)
-{
-    running->state = FINISHED;
-    running->finishTime = getTime();
-    running->responseTime = running->arrivalTime - running->startTime;
-    running->turnaround = running->finishTime - running->arrivalTime;
-    running->weightedTurnaround = running->waitingTime / running->runningTime;
 
-    scheduler->totalTA += running->turnaround;
-    scheduler->totalWTA += running->weightedTurnaround;
-
-    printf("(Scheduler): Process %d started at: %d, finished at: %d\n",
-           running->id, running->startTime, running->finishTime);
-    signal(SIGUSR2, processTermination);
-}
+// CALCULATIONS //
 
 float getAvgTA(Scheduler *scheduler)
 {
@@ -97,11 +57,14 @@ float getCpuUtilization(Scheduler* scheduler) {
     return 0.0;
 }
 
+// SIGNAL HANDLERS //
+
 void processMessageReceiver(int signum)
 {
+    processMsg msg;
     while (true)
     {
-        rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
+        int rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
         if (rec_val == -1 && errno == ENOMSG)
         {
             break;
@@ -122,9 +85,30 @@ void processMessageReceiver(int signum)
 
 void clearResources(int signum)
 {
+    printPerf(perfFile,scheduler->cpuUtilization,scheduler->avgWTA,0,scheduler->standardDeviation);
     exit(0);
     signal(SIGINT, clearResources);
 }
+
+void processTermination(int signum)
+{
+    running->state = FINISHED;
+    running->finishTime = getTime();
+    running->responseTime = running->arrivalTime - running->startTime;
+    running->turnaround = running->finishTime - running->arrivalTime;
+    running->weightedTurnaround = running->waitingTime / running->runningTime;
+
+    scheduler->totalTA += running->turnaround;
+    scheduler->totalWTA += running->weightedTurnaround;
+
+    printLog(outputFile,running,getTime());
+    printf("(Scheduler): Process %d started at: %d, finished at: %d\n",
+           running->id, running->startTime, running->finishTime);
+    signal(SIGUSR2, processTermination);
+}
+
+
+// SCHEDULING ALGORITHMS //
 
 void HPFScheduler(Scheduler *scheduler)
 {
@@ -137,8 +121,8 @@ void HPFScheduler(Scheduler *scheduler)
             continue;
         }
 
-        while (waitingForSignal)
-            ;
+        while (waitingForSignal);
+
         waitingForSignal = 1;
 
         if (running->state != STARTED && !empty(scheduler->readyQueue))
@@ -148,6 +132,8 @@ void HPFScheduler(Scheduler *scheduler)
             running->startTime = getTime();
             dequeue(scheduler->readyQueue);
 
+            
+            printLog(outputFile,running,getTime());
             printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
             int pid = safe_fork();
 
@@ -191,6 +177,7 @@ void SRTNScheduler(Scheduler *scheduler)
         {
             running->state = STOPPED;
             running->preemptedAt = getTime();
+            printLog(outputFile,running,getTime()); //logging
             printf("process %d %s at time %d, remainig time = %d\n",
                    running->id, state(running->state),
                    running->remainingTime, getTime());
@@ -218,12 +205,13 @@ void SRTNScheduler(Scheduler *scheduler)
             if (pid == 0)
             {
                 char remainingTimeStr[10];
-                sprintf(remainingTimeStr, "%d", running->remainingTime);
-
+                sprintf(remainingTimeStr, "%d", running->remainingTime);                
                 printf("Process %d %s at: %d\n", running->id,
                        state(running->state), getTime());
                 execl("./process.out", "./process.out", remainingTimeStr, NULL);
             }
+            printLog(outputFile,running,getTime()); //logging
+
         }
     }
 }
@@ -240,8 +228,8 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             continue;
         }
 
-        while (waitingForSignal)
-            ;
+        while (waitingForSignal);
+
         waitingForSignal = 1;
 
         timer++;
@@ -263,6 +251,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
                 kill(pid, SIGINT);
                 enqueue(running, scheduler->readyQueue);
+                printLog(outputFile,running,getTime());
                 printf("process %d %s at time %d, remainig time = %d\n",
                        running->id, state(running->state),
                        running->remainingTime, getTime());
@@ -297,12 +286,18 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
                 execl("./process.out", "./process.out", remainingTimeStr, NULL);
             }
+            printLog(outputFile,running,getTime());
         }
     }
 }
 
+
+
 int main(int argc, char *argv[])
 {
+    intializeLogFile(&outputFile);
+    intializePerfFile(&perfFile);
+
     signal(SIGUSR1, processMessageReceiver);
     signal(SIGUSR2, processTermination);
     signal(SIGINT, clearResources);
@@ -312,8 +307,6 @@ int main(int argc, char *argv[])
 
     int selectedAlgo = atoi(argv[1]);
     scheduler = createScheduler(selectedAlgo);
-
-    msg.mtype = SCHEDULER_TYPE;
 
     Process initProcess = {.id = -1, .arrivalTime = 0, .priority = 0, .runningTime = 0};
 

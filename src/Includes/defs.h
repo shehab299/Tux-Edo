@@ -20,40 +20,7 @@
 #define SEM1KEY 100
 #define SEM2KEY 200
 
-typedef struct PCB
-{
-    struct PCB *next;
-    int pid;
-    int id;
-    int arrivalTime;
-    int runningTime;
-    int priority;
-    int waitingTime;
-    int executionTime;
-    int remainingTime;
-    int startTime;
-    int responseTime;
-    int preemptedAt;
-    int finishTime;
-    int turnaround;
-    float weightedTurnaround;
-    int state;
-} PCB;
 
-extern int redirectOutput()
-{
-    FILE *output_file;
-    output_file = fopen("output.txt", "w");
-
-    if (output_file == NULL)
-    {
-        fprintf(stderr, "Error opening file.\n");
-        return 1;
-    }
-
-    freopen("output.txt", "w", stdout);
-    return 0;
-}
 
 typedef struct Process
 {
@@ -62,6 +29,7 @@ typedef struct Process
     int runningTime;
     int priority;
 } Process;
+
 typedef struct processMsg
 {
     long mtype;
@@ -82,6 +50,26 @@ enum SchedulingAlgorithm
     SRTN,
     RR
 };
+
+typedef struct PCB
+{
+    struct PCB *next;
+    int pid;
+    int id;
+    int arrivalTime;
+    int runningTime;
+    int priority;
+    int waitingTime;
+    int executionTime;
+    int remainingTime;
+    int startTime;
+    int responseTime;
+    int preemptedAt;
+    int finishTime;
+    int turnaround;
+    float weightedTurnaround;
+    enum ProcessStates state;
+} PCB;
 
 extern PCB *createPCB(Process newProcess)
 {
@@ -241,4 +229,35 @@ extern FILE *safe_fopen(const char *path, const char *perms)
     }
 
     return fptr;
+}
+
+const char *state(enum ProcessStates state)
+{
+    switch (state)
+    {
+    case STARTED:
+        return "started ";
+    case RESUMED:
+        return "resumed ";
+    case STOPPED:
+        return "stopped ";
+    case FINISHED:
+        return "finished";
+    default:
+        return "Unknown";
+    }
+}
+
+int createMessageQueue()
+{
+    key_t key_id = ftok("../keyfile", 65);
+    int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
+
+    if (msgQueueID == -1)
+    {
+        perror("Error in creating message queue!");
+        exit(-1);
+    }
+
+    return msgQueueID;
 }

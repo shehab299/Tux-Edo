@@ -6,6 +6,7 @@
 *.obj
 *.elf
 
+
 # Compiled dynamic libraries
 *.so
 *.dylib
@@ -18,3 +19,7 @@
 *.exe
 *.out
 *.app
+
+# Output files
+*.log
+*.perf
