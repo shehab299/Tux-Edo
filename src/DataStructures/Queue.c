@@ -1,6 +1,7 @@
 #include "Queue.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef struct Node{
     void* element;
@@ -13,14 +14,19 @@ typedef struct Queue {
     int count;
 } Queue;
 
-void* peek(Queue* q) {
+void* q_peek(void* q_) {
+    
+    Queue* q = (Queue*) q_;
+
     if (q->count == 0)  return (void *) NULL;
 
     return q->head->element;
 }
 
 
-void dequeue(Queue* q) {
+void q_dequeue(void* q_) {
+    Queue* q = (Queue*) q_;
+    
     if (q->head == NULL) return;
 
     if (q->head == q->tail)
@@ -33,7 +39,9 @@ void dequeue(Queue* q) {
     free(oldNode);
 }
 
-void enqueue(Queue* q, void* element) {
+void q_enqueue(void* q_, void* element) {
+
+    Queue* q = (Queue*) q_;
 
     if (q == NULL || element == NULL)    
         return;
@@ -50,7 +58,7 @@ void enqueue(Queue* q, void* element) {
         q->head = newNode;        
         q->tail = q->head;
         q->count++;
-        printf("Enqueued first element!");
+        // printf("Enqueued first element!");
         return;
     }
 
@@ -60,7 +68,7 @@ void enqueue(Queue* q, void* element) {
     printf("Enqueued element!");
 }
 
-Queue* createQueue() {
+void* createQueue() {
 
     Queue* q = (Queue*) malloc(sizeof(Queue));
 
@@ -68,9 +76,16 @@ Queue* createQueue() {
     q->tail = NULL;
     q->count = 0;
 
-    return q;
+    return (void*) q;
 }
 
-int getSize(Queue* q){
+bool q_empty(void* q_)
+{
+    Queue* q = (Queue*) q_;
+    return q->count == 0;
+}
+
+int q_getSize(void* q_){
+    Queue* q = (Queue*) q_;
     return q->count;
 }

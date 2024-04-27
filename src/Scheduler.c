@@ -80,6 +80,7 @@ void processMessageReceiver(int signum)
         }
         else if (rec_val == -1 && errno != ENOMSG)
         {
+            printf("I AM STUCK HERE FOR NO REASON \n");
             perror("Scheduler:Failed receiving from message queue\n");
             break;
         }
@@ -131,6 +132,28 @@ void HPFScheduler(Scheduler *scheduler)
     }
 
 }
+
+void RRScheduler(Scheduler *scheduler)
+{
+    printf("YALLA BENA \n");
+    int timer = getTime();
+    int pid;
+
+    while(true)
+    {
+        sleep_ms(10);
+
+        if(timer == getTime())
+        {
+            continue;
+        }
+
+        printf("Running %d %d \n" , getTime() , timer);
+        timer++;
+    }
+}
+
+
 
 void SRTNScheduler(Scheduler *scheduler)
 {
@@ -185,10 +208,10 @@ void SRTNScheduler(Scheduler *scheduler)
                 execl("./process.out", "./process.out", remainingTimeStr, NULL);
             }
         }        
-        
-
     }
 }
+
+
 
 
 int main(int argc, char *argv[])
@@ -222,7 +245,7 @@ int main(int argc, char *argv[])
     else if(selectedAlgo == SRTN) 
         SRTNScheduler(scheduler);
     else
-        //RR WORK
+        RRScheduler(scheduler);
 
     disconnectClk(true);
 }

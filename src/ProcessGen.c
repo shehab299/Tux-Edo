@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
 
     int selectedAlgo = userInput();
-    printf("%d \n",getSize(pQueue));
+    printf("%d \n",q_getSize(pQueue));
 
     
     int clkPid = safe_fork();
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
     //FINISH WORK
     int timer = getTime();
-    Process* nextProcess = peek(pQueue);
+    Process* nextProcess = q_peek(pQueue);
 
     while(true)
     {
@@ -68,13 +68,13 @@ int main(int argc, char *argv[])
         {
             // printf("1 \n");
             sendMessageToScheduler(msgQueueID,nextProcess);
-            dequeue(pQueue);
-            nextProcess = peek(pQueue);
+            q_dequeue(pQueue);
+            nextProcess = q_peek(pQueue);
 
             send = 1;
         }
 
-        // printf("sending signal \n");
+        printf("sending signal \n");
         kill(schedulerId, SIGUSR1);
 
         sleep_ms(500);
@@ -118,7 +118,7 @@ void initalizeQueue(char* filePath, Queue* pQueue)
             newProcess->runningTime = runtime;
             newProcess->priority = priority;
 
-            enqueue(pQueue, newProcess);
+            q_enqueue(pQueue, newProcess);
 
             printf("Successfully read process with id %d\n", id);
         }

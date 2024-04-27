@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "DataStructures/CircularQueue.h"
+#include "DataStructures/Queue.h"
 #include "DataStructures/PriorityQueue.h"
 #include "Includes/defs.h"
 
@@ -35,12 +35,12 @@ ReadyQueue* createReadyQueue(enum SchedulingAlgorithm type){
     ReadyQueue* ready = malloc(sizeof(ReadyQueue));
 
     if(type == RR){
-        ready->datastructre = cq_create();
-        ready->enqueue = cq_enqueue;
-        ready->dequeue = cq_dequeue;
-        ready->empty = cq_empty;
-        ready->size = cq_size;
-        ready->top = cq_top;
+        ready->datastructre = createQueue;
+        ready->enqueue = q_enqueue;
+        ready->dequeue = q_dequeue;
+        ready->empty = q_empty;
+        ready->size = q_getSize;
+        ready->top = q_peek;
     }
     else if(type == HPF || type == SRTN){
 
