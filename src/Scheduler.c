@@ -6,8 +6,6 @@ processMsg msg;
 int currentTime;
 PCB *running;
 PCB *top;
-int sem1;
-int sem2;
 int goodToGo = 0;
 
 int createMessageQueue()
@@ -29,7 +27,6 @@ typedef struct Scheduler
     ReadyQueue *readyQueue;
     int numProcesses;
     int cpuUtilization;
-    // int currentTime;
     float avgWTA;
     float avgTA;
     float standardDeviation;
@@ -74,14 +71,14 @@ void processMessageReceiver(int signum)
         rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
         if (rec_val == -1 && errno == ENOMSG)
         {
-            break; // NO MESSAGES
+            break;
         }
         else if (rec_val == -1 && errno != ENOMSG)
         {
             perror("Scheduler:Failed receiving from message queue\n");
             break;
         }
-        printf("Scheduler: Message received! with process id %d\n", msg.newProcess.id);
+        printf("Scheduler: Message received! with process id %d at time %d\n", msg.newProcess.id, getTime());
         PCB *newProcessPCB = createPCB(msg.newProcess);
         enqueue(newProcessPCB, scheduler->readyQueue);
         scheduler->numProcesses++;
@@ -202,27 +199,28 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         goodToGo = 0;
 
         timer++;
-        if (running->state == RUNNING)
-        {
-            remainingTimeSlice--;
-            printf("decreasing time slice\n");
-        }
-        // what if it is terminated before the end of the time slice??
-        // what if it is terminated at the end of the time slice?
-        if (remainingTimeSlice == 0 && running->state != TERMINATED)
-        {
-            running->remainingTime -= timeSlice;
-            if (!empty(scheduler->readyQueue))
-            {
-                running->state = READY;
-                kill(pid, SIGINT);
-                enqueue(running, scheduler->readyQueue);
-                printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
-            }
-        }
+        // if (running->state == RUNNING)
+        // {
+        //     remainingTimeSlice--;
+        //     printf("decreasing time slice\n");
+        // }
+        // // what if it is terminated before the end of the time slice??
+        // // what if it is terminated at the end of the time slice?
+        // if (remainingTimeSlice == 0 && running->state != TERMINATED)
+        // {
+        //     running->remainingTime -= timeSlice;
+        //     if (!empty(scheduler->readyQueue))
+        //     {
+        //         running->state = READY;
+        //         kill(pid, SIGINT);
+        //         enqueue(running, scheduler->readyQueue);
+        //         printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
+        //     }
+        // }
 
         if (running->state != RUNNING && !empty(scheduler->readyQueue))
         {
+            // printf("Hii\n");
             remainingTimeSlice = timeSlice;
             running = peek(scheduler->readyQueue);
             running->state = RUNNING;
