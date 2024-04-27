@@ -199,24 +199,24 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         goodToGo = 0;
 
         timer++;
-        if (running->state == RUNNING)
-        {
-            remainingTimeSlice--;
-            printf("decreasing time slice\n");
-        }
-        // what if it is terminated before the end of the time slice??
-        // what if it is terminated at the end of the time slice?
-        if (remainingTimeSlice == 0 && running->state != TERMINATED)
-        {
-            running->remainingTime -= timeSlice;
-            if (!empty(scheduler->readyQueue))
-            {
-                running->state = READY;
-                kill(pid, SIGINT);
-                enqueue(running, scheduler->readyQueue);
-                printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
-            }
-        }
+        // if (running->state == RUNNING)
+        // {
+        //     remainingTimeSlice--;
+        //     printf("decreasing time slice\n");
+        // }
+        // // what if it is terminated before the end of the time slice??
+        // // what if it is terminated at the end of the time slice?
+        // if (remainingTimeSlice == 0 && running->state != TERMINATED)
+        // {
+        //     running->remainingTime -= timeSlice;
+        //     if (!empty(scheduler->readyQueue))
+        //     {
+        //         running->state = READY;
+        //         kill(pid, SIGINT);
+        //         enqueue(running, scheduler->readyQueue);
+        //         printf("Switch process %d, remainig time = %d\n", running->id, running->remainingTime);
+        //     }
+        // }
 
         if (running->state != RUNNING && !empty(scheduler->readyQueue))
         {

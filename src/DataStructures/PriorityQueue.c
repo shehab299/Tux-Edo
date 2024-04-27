@@ -116,7 +116,7 @@ void pq_dequeue(void* _queue){
     queue->count--;
 }
 
-void pq_enqueue(void* k, void* _queue){
+void pq_enqueue(void* _queue,void* k){
 
     PriorityQueue* queue = (PriorityQueue*) _queue;
     

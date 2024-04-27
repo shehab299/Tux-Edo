@@ -63,7 +63,7 @@ ReadyQueue *createReadyQueue(enum SchedulingAlgorithm type)
 
 void enqueue(PCB *process, ReadyQueue *ready)
 {
-    return ready->enqueue(process, ready->datastructre);
+    return ready->enqueue(ready->datastructre,process);
 }
 
 void dequeue(ReadyQueue *ready)

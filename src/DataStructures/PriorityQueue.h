@@ -8,7 +8,7 @@ void* pq_create(int size,bool comp(void*,void*));
 
 void pq_destroy(void* heap);
 
-void pq_enqueue(void* k, void* heap);
+void pq_enqueue(void* heap , void* k);
 
 void* pq_top(void* heap);
 
