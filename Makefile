@@ -3,14 +3,14 @@ build:
 	
 	gcc -c src/Scheduler.c 
 	gcc -c src/DataStructures/PriorityQueue.c
-	gcc Scheduler.o PriorityQueue.o -o scheduler.out
+	gcc -c src/DataStructures/Queue.c
+	gcc Scheduler.o PriorityQueue.o  Queue.o  -o scheduler.out
 	
 	gcc src/Process.c -o process.out
 	gcc tests/test_generator.c -o testgen.out
 
-	gcc -c src/DataStructures/Queue.c
-	gcc -c src/ProcessGen.c 
 
+	gcc -c src/ProcessGen.c 
 	gcc ProcessGen.o Queue.o -o pg.out
 
 	rm -f *.o
@@ -35,4 +35,3 @@ clean:
 	rm -f *.o *.out
 
 all: clean build run
-

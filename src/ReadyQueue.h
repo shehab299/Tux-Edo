@@ -1,25 +1,19 @@
 #include <stdlib.h>
-#include <DataStructures/CircularQueue.h>
-#include <DataStructures/PriorityQueue.h>
+#include "DataStructures/Queue.h"
+#include "DataStructures/PriorityQueue.h"
 #include "Includes/defs.h"
 
-struct ReadyQueue{
-    void* datastructre;
-    void (*enqueue)(void*,void*);
-    void (*dequeue)(void*);
-    void* (*top)(void*);
-    int (*size)(void*);
-    bool (*empty)(void*);
+struct ReadyQueue
+{
+    void *datastructre;
+    void (*enqueue)(void *, void *);
+    void (*dequeue)(void *);
+    void *(*top)(void *);
+    int (*size)(void *);
+    bool (*empty)(void *);
 };
 
 typedef struct ReadyQueue ReadyQueue;
-
-enum Type{
-    Circular = 1,
-    Priority
-};
-
-typedef enum Type Type;
 
 bool comparePriority(void *a, void *b)
 {
@@ -28,32 +22,34 @@ bool comparePriority(void *a, void *b)
     return processA->priority < processB->priority;
 }
 
-bool compareRemaining(void* a, void* b)
+bool compareRemaining(void *a, void *b)
 {
     PCB *processA = (PCB *)a;
     PCB *processB = (PCB *)b;
     return processA->remainingTime < processB->remainingTime;
 }
 
+ReadyQueue *createReadyQueue(enum SchedulingAlgorithm type)
+{
 
-ReadyQueue* createReadyQueue(Type type){
+    ReadyQueue *ready = malloc(sizeof(ReadyQueue));
 
-    ReadyQueue* ready = malloc(sizeof(ReadyQueue));
-
-    if(type == 1){
-        ready->datastructre = cq_create();
-        ready->enqueue = cq_enqueue;
-        ready->dequeue = cq_dequeue;
-        ready->empty = cq_empty;
-        ready->size = cq_size;
-        ready->top = cq_top;
+    if (type == RR)
+    {
+        ready->datastructre = createQueue();
+        ready->enqueue = q_enqueue;
+        ready->dequeue = q_dequeue;
+        ready->empty = q_empty;
+        ready->size = q_getSize;
+        ready->top = q_peek;
     }
-    else if(type == 2 || type == 3){
+    else if (type == HPF || type == SRTN)
+    {
 
-        if(type == 2)
-            ready->datastructre = pq_create(10,comparePriority);
-        else if(type == 3)
-            ready->datastructre = pq_create(10,compareRemaining);
+        if (type == HPF)
+            ready->datastructre = pq_create(10, comparePriority);
+        else if (type == SRTN)
+            ready->datastructre = pq_create(10, compareRemaining);
 
         ready->enqueue = pq_enqueue;
         ready->dequeue = pq_dequeue;
@@ -65,23 +61,27 @@ ReadyQueue* createReadyQueue(Type type){
     return ready;
 }
 
-void enqueue(ReadyQueue* ready,PCB* process){
+void enqueue(PCB *process, ReadyQueue *ready)
+{
     return ready->enqueue(ready->datastructre,process);
 }
 
-void dequeue(ReadyQueue* ready){
+void dequeue(ReadyQueue *ready)
+{
     return ready->dequeue(ready->datastructre);
 }
 
-PCB* top(ReadyQueue* ready){
+PCB *peek(ReadyQueue *ready)
+{
     return ready->top(ready->datastructre);
 }
 
-int size(ReadyQueue* ready){
+int size(ReadyQueue *ready)
+{
     return ready->size(ready->datastructre);
 }
 
-bool empty(ReadyQueue* ready){
+bool empty(ReadyQueue *ready)
+{
     return ready->empty(ready->datastructre);
 }
-
