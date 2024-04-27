@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     {
         char selectedAlgoStr[10];
         sprintf(selectedAlgoStr, "%d", selectedAlgo);
-        execl("/home/asmaa/Desktop/Tux-Edo/scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
+        execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
 
     sleep_ms(100);

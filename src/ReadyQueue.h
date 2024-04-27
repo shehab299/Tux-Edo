@@ -36,7 +36,7 @@ ReadyQueue *createReadyQueue(enum SchedulingAlgorithm type)
 
     if (type == RR)
     {
-        ready->datastructre = createQueue;
+        ready->datastructre = createQueue();
         ready->enqueue = q_enqueue;
         ready->dequeue = q_dequeue;
         ready->empty = q_empty;
@@ -57,26 +57,22 @@ ReadyQueue *createReadyQueue(enum SchedulingAlgorithm type)
         ready->top = pq_top;
         ready->empty = pq_empty;
     }
-    printf("Inside creating\n");
 
     return ready;
 }
 
 void enqueue(PCB *process, ReadyQueue *ready)
 {
-    printf("Inside enqueue\n");
     return ready->enqueue(process, ready->datastructre);
 }
 
 void dequeue(ReadyQueue *ready)
 {
-    printf("Inside dequeue\n");
     return ready->dequeue(ready->datastructre);
 }
 
 PCB *peek(ReadyQueue *ready)
 {
-    printf("inside peek");
     return ready->top(ready->datastructre);
 }
 
