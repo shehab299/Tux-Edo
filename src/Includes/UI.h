@@ -27,7 +27,7 @@ int getch(void)
     return ch;
 }
 
-int userInput()
+void userInput(int *selectedAlgo, int *timeSlice)
 {
     int numChoices = 3;
     char *choices[] = {"Non-preemptive Highest Priority First", "Shortest Remaining time Next", "Round Robin"};
@@ -69,5 +69,22 @@ int userInput()
             break;
         }
     }
-    return selectedChoice + 1;
+    *selectedAlgo = selectedChoice + 1;
+    if (*selectedAlgo == 3)
+    {
+        printf("\n");
+        char ch;
+        do
+        {
+            printf("\033[35mEnter the time slice for RR algorithm\033[00m\n");
+            if (!scanf("%d", timeSlice))
+            {
+                printf("\033[34mInvalid input. Please enter an integer\033[00m\n\033[35mAgain ");
+                while (getchar() != '\n')
+                    ;
+            }
+            else if (*timeSlice <= 0)
+                printf("\033[31mInvalid input. Please enter an integer greater than 0\033[00m\n\033[35mAgain ");
+        } while (*timeSlice <= 0);
+    }
 }

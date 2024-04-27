@@ -25,8 +25,11 @@ int main(int argc, char *argv[])
 
     Queue *pQueue = createQueue();
     initalizeQueue("./processes.txt", pQueue);
+    
+    int *selectedAlgo = malloc(sizeof(int));
+    int *timeSlice = malloc(sizeof(int));
 
-    int selectedAlgo = userInput();
+    userInput(selectedAlgo,timeSlice);
 
     int clkPid = safe_fork();
 
@@ -40,7 +43,15 @@ int main(int argc, char *argv[])
     if (schedulerId == 0)
     {
         char selectedAlgoStr[10];
-        sprintf(selectedAlgoStr, "%d", selectedAlgo);
+        sprintf(selectedAlgoStr, "%d", *selectedAlgo);
+
+        char timeSliceStr[10];
+        if (*selectedAlgo == 3)
+        {
+            sprintf(timeSliceStr, "%d", *timeSlice);
+            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr,timeSliceStr, NULL);
+        }
+        else
         execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
 

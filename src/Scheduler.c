@@ -236,7 +236,6 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
 int main(int argc, char *argv[])
 {
-    int timeSlice = 4;
     printf("HELLO FROM SCHEDULER \n");
 
     signal(SIGUSR1, processMessageReceiver);
@@ -267,7 +266,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        RRScheduler(scheduler, timeSlice);
+        RRScheduler(scheduler, atoi(argv[2]));
     }
 
     disconnectClk(true);
