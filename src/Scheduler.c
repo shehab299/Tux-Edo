@@ -85,7 +85,11 @@ void processMessageReceiver(int signum)
 
 void clearResources(int signum)
 {
-    printPerf(perfFile,scheduler->cpuUtilization,scheduler->avgWTA,0,scheduler->standardDeviation);
+    int cpu = getCpuUtilization(scheduler);
+    int avgWTA = getAvgWTA(scheduler);
+    int avgTA = getAvgTA(scheduler);
+
+    printPerf(perfFile,cpu,avgWTA,0,0);
     exit(0);
     signal(SIGINT, clearResources);
 }
