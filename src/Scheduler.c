@@ -151,7 +151,6 @@ int main(int argc, char *argv[])
     disconnectClk(true);
 }
 
-
 void HPFSchedule(Scheduler *scheduler)
 {
     int timer = getTime();
@@ -263,7 +262,6 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             if (!empty(scheduler->readyQueue))
             {
                 stopProcess(running);
-                printLog(output, running, getTime());
                 logEvent();
             }
         }
@@ -336,16 +334,7 @@ void resumeProcess(PCB* process){
     process->state = RESUMED;
     process->waitingTime += getTime() - running->preemptedAt;
 
-    int pid = safe_fork();      
-
-    if (pid == 0)
-    {
-        char remainingTimeStr[10];
-        sprintf(remainingTimeStr, "%d", process->remainingTime);
-        execl("./process.out", "./process.out", remainingTimeStr, NULL);
-    }
-
-    process->pid = pid;
+    kill(process->pid,SIGCONT);   
 }
 
 void startProcess(PCB* process){
@@ -370,7 +359,7 @@ void stopProcess(PCB* process){
     process->state = STOPPED;
     process->preemptedAt = getTime();
     enqueue(process, scheduler->readyQueue);
-    kill(process->pid, SIGINT);
+    kill(process->pid, SIGSTOP);
 }
 
 void logEvent(){
