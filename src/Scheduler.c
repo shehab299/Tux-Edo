@@ -7,20 +7,23 @@ PCB *running;
 PCB *top;
 int waitingForSignal = 1;
 
-FILE* outputFile;
-FILE* perfFile;
-
+FILE *outputFile;
+FILE *perfFile;
 
 typedef struct Scheduler
 {
     ReadyQueue *readyQueue;
     int numProcesses;
-    int cpuUtilization;
+    int idleTime;
+    float cpuUtilization;
     float avgWTA;
     float avgTA;
-    float standardDeviation;
+    float avgWaiting;
     float totalTA;
     float totalWTA;
+    float totalWaiting;
+    float squaredDeviation;
+    float standardDeviation;
 } Scheduler;
 
 Scheduler *scheduler;
@@ -30,15 +33,18 @@ Scheduler *createScheduler(int schedulingAlgo)
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
     scheduler->readyQueue = createReadyQueue(schedulingAlgo);
     scheduler->numProcesses = 0;
+    scheduler->idleTime = 0;
     scheduler->cpuUtilization = 0.0;
     scheduler->totalTA = 0.0;
     scheduler->totalWTA = 0.0;
+    scheduler->totalWaiting = 0.0;
     scheduler->avgWTA = 0.0;
     scheduler->avgTA = 0.0;
+    scheduler->avgWaiting = 0.0;
+    scheduler->squaredDeviation = 0.0;
     scheduler->standardDeviation = 0.0;
     return scheduler;
 }
-
 
 // CALCULATIONS //
 
@@ -48,13 +54,21 @@ float getAvgTA(Scheduler *scheduler)
     return scheduler->avgTA;
 }
 
-float getAvgWTA(Scheduler* scheduler) {
+float getAvgWTA(Scheduler *scheduler)
+{
     scheduler->avgWTA = scheduler->avgWTA / scheduler->numProcesses;
     return scheduler->avgWTA;
 }
 
-float getCpuUtilization(Scheduler* scheduler) {
-    return 0.0;
+float getCpuUtilization(Scheduler *scheduler)
+{
+    return ((getTime() - scheduler->idleTime) / getTime()) * 100;
+}
+
+float getAvgWaiting(Scheduler *scheduler)
+{
+    scheduler->avgWaiting = scheduler->totalWaiting / scheduler->numProcesses;
+    return scheduler->avgWaiting;
 }
 
 // SIGNAL HANDLERS //
@@ -89,7 +103,7 @@ void clearResources(int signum)
     int avgWTA = getAvgWTA(scheduler);
     int avgTA = getAvgTA(scheduler);
 
-    printPerf(perfFile,cpu,avgWTA,0,0);
+    printPerf(perfFile, cpu, avgWTA, 0, 0);
     exit(0);
     signal(SIGINT, clearResources);
 }
@@ -104,13 +118,13 @@ void processTermination(int signum)
 
     scheduler->totalTA += running->turnaround;
     scheduler->totalWTA += running->weightedTurnaround;
+    scheduler->totalWaiting += running->waitingTime;
 
-    printLog(outputFile,running,getTime());
+    printLog(outputFile, running, getTime());
     printf("(Scheduler): Process %d started at: %d, finished at: %d\n",
            running->id, running->startTime, running->finishTime);
     signal(SIGUSR2, processTermination);
 }
-
 
 // SCHEDULING ALGORITHMS //
 
@@ -125,7 +139,8 @@ void HPFScheduler(Scheduler *scheduler)
             continue;
         }
 
-        while (waitingForSignal);
+        while (waitingForSignal)
+            ;
 
         waitingForSignal = 1;
 
@@ -134,11 +149,13 @@ void HPFScheduler(Scheduler *scheduler)
             running = peek(scheduler->readyQueue);
             running->state = STARTED;
             running->startTime = getTime();
+            running->waitingTime = getTime() - running->arrivalTime;
+
             dequeue(scheduler->readyQueue);
 
-            
-            printLog(outputFile,running,getTime());
+            printLog(outputFile, running, getTime());
             printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
+
             int pid = safe_fork();
 
             if (pid == 0)
@@ -147,6 +164,12 @@ void HPFScheduler(Scheduler *scheduler)
                 sprintf(runningTimeStr, "%d", running->runningTime);
                 execl("./process.out", "./process", runningTimeStr, NULL);
             }
+        }
+
+        if (running->state != STARTED)
+        {
+            scheduler->idleTime++;
+            printf("idle at %d\n", getTime());
         }
     }
 }
@@ -170,6 +193,14 @@ void SRTNScheduler(Scheduler *scheduler)
         running->remainingTime -= 1;
         timer++;
 
+        if (empty(scheduler->readyQueue) &&
+            running->state != STARTED &&
+            running->state != RESUMED)
+        {
+            scheduler->idleTime++;
+            printf("idle at %d\n", getTime());
+        }
+
         if (empty(scheduler->readyQueue))
         {
             continue;
@@ -181,7 +212,7 @@ void SRTNScheduler(Scheduler *scheduler)
         {
             running->state = STOPPED;
             running->preemptedAt = getTime();
-            printLog(outputFile,running,getTime()); //logging
+            printLog(outputFile, running, getTime()); // logging
             printf("process %d %s at time %d, remainig time = %d\n",
                    running->id, state(running->state),
                    running->remainingTime, getTime());
@@ -198,10 +229,12 @@ void SRTNScheduler(Scheduler *scheduler)
             {
                 running->state = STARTED;
                 running->startTime = getTime();
+                running->waitingTime += running->startTime - running->arrivalTime;
             }
             else
             {
                 running->state = RESUMED;
+                running->waitingTime += getTime() - running->preemptedAt;
             }
 
             pid = safe_fork();
@@ -209,13 +242,12 @@ void SRTNScheduler(Scheduler *scheduler)
             if (pid == 0)
             {
                 char remainingTimeStr[10];
-                sprintf(remainingTimeStr, "%d", running->remainingTime);                
+                sprintf(remainingTimeStr, "%d", running->remainingTime);
                 printf("Process %d %s at: %d\n", running->id,
                        state(running->state), getTime());
                 execl("./process.out", "./process.out", remainingTimeStr, NULL);
             }
-            printLog(outputFile,running,getTime()); //logging
-
+            printLog(outputFile, running, getTime()); // logging
         }
     }
 }
@@ -232,7 +264,8 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             continue;
         }
 
-        while (waitingForSignal);
+        while (waitingForSignal)
+            ;
 
         waitingForSignal = 1;
 
@@ -255,7 +288,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
                 kill(pid, SIGINT);
                 enqueue(running, scheduler->readyQueue);
-                printLog(outputFile,running,getTime());
+                printLog(outputFile, running, getTime());
                 printf("process %d %s at time %d, remainig time = %d\n",
                        running->id, state(running->state),
                        running->remainingTime, getTime());
@@ -276,10 +309,12 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             {
                 running->state = STARTED;
                 running->startTime = getTime();
+                running->waitingTime += running->startTime - running->arrivalTime;
             }
             else
             {
                 running->state = RESUMED;
+                running->waitingTime += getTime() - running->preemptedAt;
             }
 
             if (pid == 0)
@@ -290,12 +325,16 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
                 execl("./process.out", "./process.out", remainingTimeStr, NULL);
             }
-            printLog(outputFile,running,getTime());
+            printLog(outputFile, running, getTime());
+        }
+
+        if (running->state != STARTED && running->state != RESUMED)
+        {
+            scheduler->idleTime++;
+            printf("idle at %d\n", getTime());
         }
     }
 }
-
-
 
 int main(int argc, char *argv[])
 {
@@ -316,6 +355,7 @@ int main(int argc, char *argv[])
 
     top = createPCB(initProcess);
     running = createPCB(initProcess);
+    running->state = STOPPED;
 
     if (selectedAlgo == HPF)
     {

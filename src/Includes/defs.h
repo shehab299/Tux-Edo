@@ -20,8 +20,6 @@
 #define SEM1KEY 100
 #define SEM2KEY 200
 
-
-
 typedef struct Process
 {
     int id;
