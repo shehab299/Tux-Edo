@@ -69,33 +69,6 @@ typedef struct PCB
     enum ProcessStates state;
 } PCB;
 
-extern PCB *createPCB(Process newProcess)
-{
-    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
-    if (newPCB == NULL)
-    {
-        perror("Error allocating memory for PCB");
-        exit(EXIT_FAILURE);
-    }
-    newPCB->pid = 0;
-    newPCB->id = newProcess.id;
-    newPCB->arrivalTime = newProcess.arrivalTime;
-    newPCB->runningTime = newProcess.runningTime;
-    newPCB->priority = newProcess.priority;
-    newPCB->waitingTime = 0;
-    newPCB->executionTime = 0;
-    newPCB->remainingTime = newProcess.runningTime;
-    newPCB->startTime = 0;
-    newPCB->responseTime = 0;
-    newPCB->preemptedAt = 0;
-    newPCB->finishTime = 0;
-    newPCB->turnaround = 0;
-    newPCB->weightedTurnaround = 0.0;
-    newPCB->state = STOPPED;
-
-    return newPCB;
-}
-
 enum MessageTypes
 {
     SCHEDULER_TYPE = 505,
@@ -103,12 +76,12 @@ enum MessageTypes
 
 int *shmaddr;
 
-extern int getTime()
+int getTime()
 {
     return *shmaddr;
 }
 
-extern void connectToClk()
+void connectToClk()
 {
     int shmid = shmget(SHKEY, 4, 0444);
 
@@ -123,7 +96,7 @@ extern void connectToClk()
     shmaddr = (int *)shmat(shmid, (void *)0, 0);
 }
 
-extern void disconnectClk(bool terminateAll)
+void disconnectClk(bool terminateAll)
 {
     shmdt(shmaddr);
     if (terminateAll)
@@ -132,7 +105,7 @@ extern void disconnectClk(bool terminateAll)
     }
 }
 
-extern void sleep_ms(unsigned int milliseconds)
+void sleep_ms(unsigned int milliseconds)
 {
     struct timespec req;
     req.tv_sec = milliseconds / 1000;
@@ -140,69 +113,7 @@ extern void sleep_ms(unsigned int milliseconds)
     nanosleep(&req, NULL);
 }
 
-union Semun
-{
-    int val;
-    struct semid_ds *buf;
-    unsigned short *array;
-    struct seminfo *__buf;
-};
-
-extern void down(int sem)
-{
-    struct sembuf op;
-
-    op.sem_num = 0;
-    op.sem_op = -1;
-    op.sem_flg = !IPC_NOWAIT;
-
-    if (semop(sem, &op, 1) == -1)
-    {
-        perror("Error in down()");
-        exit(-1);
-    }
-}
-
-extern void up(int sem)
-{
-    struct sembuf op;
-
-    op.sem_num = 0;
-    op.sem_op = 1;
-    op.sem_flg = !IPC_NOWAIT;
-
-    if (semop(sem, &op, 1) == -1)
-    {
-        perror("Error in up()");
-        exit(-1);
-    }
-}
-
-extern int *createSemaphore(int key)
-{
-    union Semun semun;
-
-    int *sem = malloc(sizeof(int));
-    *sem = semget(key, 1, 0666 | IPC_CREAT);
-
-    if (*sem == -1)
-    {
-        perror("Error in create sem");
-        exit(-1);
-    }
-
-    semun.val = 0;
-
-    if (semctl(*sem, 0, SETVAL, semun) == -1)
-    {
-        perror("Error in semctl");
-        exit(-1);
-    }
-
-    return sem;
-}
-
-extern int safe_fork()
+int safe_fork()
 {
     int pid = fork();
 
@@ -215,7 +126,7 @@ extern int safe_fork()
     return pid;
 }
 
-extern FILE *safe_fopen(const char *path, const char *perms)
+FILE *safe_fopen(const char *path, const char *perms)
 {
 
     FILE *fptr = fopen(path, perms);
@@ -258,4 +169,31 @@ int createMessageQueue()
     }
 
     return msgQueueID;
+}
+
+PCB *createPCB(Process newProcess)
+{
+    PCB *newPCB = (PCB *)malloc(sizeof(PCB));
+    if (newPCB == NULL)
+    {
+        perror("Error allocating memory for PCB");
+        exit(EXIT_FAILURE);
+    }
+    newPCB->pid = 0;
+    newPCB->id = newProcess.id;
+    newPCB->arrivalTime = newProcess.arrivalTime;
+    newPCB->runningTime = newProcess.runningTime;
+    newPCB->priority = newProcess.priority;
+    newPCB->waitingTime = 0;
+    newPCB->executionTime = 0;
+    newPCB->remainingTime = newProcess.runningTime;
+    newPCB->startTime = 0;
+    newPCB->responseTime = 0;
+    newPCB->preemptedAt = 0;
+    newPCB->finishTime = 0;
+    newPCB->turnaround = 0;
+    newPCB->weightedTurnaround = 0.0;
+    newPCB->state = STOPPED;
+
+    return newPCB;
 }
