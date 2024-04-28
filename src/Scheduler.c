@@ -1,16 +1,20 @@
 #include "Includes/defs.h"
 #include "ReadyQueue.h"
 #include "Includes/IO.h"
+#include <math.h>
 
 int msgQueueID;
-PCB *running;
 int waitingForSignal = 1;
 
 struct IO* output;
 
+
 typedef struct Scheduler
 {
     ReadyQueue *readyQueue;
+    ReadyQueue *trash;
+
+    PCB* running;
     int numProcesses;
     int idleTime;
     float cpuUtilization;
@@ -30,6 +34,8 @@ Scheduler *createScheduler(int schedulingAlgo)
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
     scheduler->readyQueue = createReadyQueue(schedulingAlgo);
+    scheduler->trash = createReadyQueue(RR);
+
     scheduler->numProcesses = 0;
     scheduler->idleTime = 0;
     scheduler->cpuUtilization = 0.0;
@@ -43,6 +49,9 @@ Scheduler *createScheduler(int schedulingAlgo)
     scheduler->standardDeviation = 0.0;
     return scheduler;
 }
+
+
+
 
 float getAvgTA(Scheduler *scheduler);
 float getAvgWTA(Scheduler *scheduler);
@@ -59,61 +68,16 @@ void outputSummary(Scheduler* s);
 void resumeProcess(PCB* process);
 void startProcess(PCB* process);
 void stopProcess(PCB* process);
+void finishProcess(PCB* process);
+
 void logEvent();
 
+void terminateProcess(int signum);
+void clearResources(int signum);
+void recieveProcess(int signum);
 
-// SIGNAL HANDLERS //
 
-void recieveProcess(int signum)
-{
-    processMsg msg;
-    
-    while (true)
-    {
-        int rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
-        if (rec_val == -1 && errno == ENOMSG)
-        {
-            break;
-        }
-        else if (rec_val == -1 && errno != ENOMSG)
-        {
-            perror("Scheduler: Failed receiving from message queue\n");
-            break;
-        }
 
-        // printf("Scheduler: Message received! with process id %d at time %d\n", msg.newProcess.id, getTime());
-        
-        addProcessToReady(scheduler,msg.newProcess);
-    }
-
-    waitingForSignal = 0;
-    signal(SIGUSR1, recieveProcess);
-}
-
-void clearResources(int signum)
-{
-    outputSummary(scheduler);
-    free(scheduler);
-    exit(0);
-}
-
-void terminateProcess(int signum)
-{
-    running->state = FINISHED;
-    running->finishTime = getTime();
-    running->responseTime = running->arrivalTime - running->startTime;
-    running->turnaround = running->finishTime - running->arrivalTime;
-    running->weightedTurnaround = running->waitingTime / running->runningTime;
-
-    scheduler->totalTA += running->turnaround;
-    scheduler->totalWTA += running->weightedTurnaround;
-    scheduler->totalWaiting += running->waitingTime;
-
-    printLog(output, running, getTime());
-    printf("(Scheduler): Process %d started at: %d, finished at: %d\n",
-           running->id, running->startTime, running->finishTime);
-    signal(SIGUSR2, terminateProcess);
-}
 
 int main(int argc, char *argv[])
 {
@@ -131,8 +95,8 @@ int main(int argc, char *argv[])
 
     Process initProcess = {.id = -1, .arrivalTime = 0, .priority = 0, .runningTime = 0};
 
-    running = createPCB(initProcess);
-    running->state = STOPPED;
+    scheduler->running = createPCB(initProcess);
+    scheduler->running->state = STOPPED;
 
     if (selectedAlgo == HPF)
     {
@@ -148,7 +112,6 @@ int main(int argc, char *argv[])
         RRScheduler(scheduler, timeSlice);
     }
 
-    disconnectClk(true);
 }
 
 void HPFSchedule(Scheduler *scheduler)
@@ -166,20 +129,22 @@ void HPFSchedule(Scheduler *scheduler)
 
         waitingForSignal = 1;
 
-        if (running->state != STARTED && !empty(scheduler->readyQueue))
+        if (scheduler->running->state != STARTED && !empty(scheduler->readyQueue))
         {
-            running = peek(scheduler->readyQueue);
+            scheduler->running = peek(scheduler->readyQueue);
             dequeue(scheduler->readyQueue);
 
-            startProcess(running);
+            startProcess(scheduler->running);
             logEvent();
         }
 
-        if (running->state != STARTED)
+        if (scheduler->running->state != STARTED)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
         }
+
+        scheduler->running->remainingTime--;
     }
 }
 
@@ -195,15 +160,19 @@ void SRTNScheduler(Scheduler *scheduler)
         while (waitingForSignal);
         waitingForSignal = 1;
 
-        running->remainingTime -= 1;
         timer++;
 
         if (empty(scheduler->readyQueue) &&
-            running->state != STARTED &&
-            running->state != RESUMED)
+            scheduler->running->state != STARTED &&
+            scheduler->running->state != RESUMED)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
+        }
+
+
+        if(scheduler->running->state == STARTED || scheduler->running->state == RESUMED){
+            scheduler->running->remainingTime--;
         }
 
         if (empty(scheduler->readyQueue))
@@ -211,25 +180,27 @@ void SRTNScheduler(Scheduler *scheduler)
 
         PCB* top = peek(scheduler->readyQueue);
 
-        if (running->state != FINISHED && top->remainingTime < running->remainingTime)
+        if (scheduler->running->state != FINISHED && top->remainingTime < scheduler->running->remainingTime)
         {
-            stopProcess(running);
+            stopProcess(scheduler->running);
             logEvent();
         }
 
-        if (running->state != STARTED && running->state != RESUMED)
+        if (scheduler->running->state != STARTED && scheduler->running->state != RESUMED)
         {
-            running = peek(scheduler->readyQueue);
+            scheduler->running = peek(scheduler->readyQueue);
             dequeue(scheduler->readyQueue);
 
-            if (running->startTime == 0)
-                startProcess(running);
+            if (scheduler->running->startTime == 0)
+                startProcess(scheduler->running);
             else
-                resumeProcess(running);
+                resumeProcess(scheduler->running);
 
 
             logEvent();
         }
+
+
     }
 }
 
@@ -248,41 +219,41 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
         timer++;
         if (remainingTimeSlice != 0 &&
-            (running->state == STARTED ||
-             running->state == RESUMED))
+            (scheduler->running->state == STARTED ||
+             scheduler->running->state == RESUMED))
         {
             remainingTimeSlice--;
+            scheduler->running->remainingTime -= 1;
         }
 
-        if (remainingTimeSlice == 0 && running->state != FINISHED)
+        if (remainingTimeSlice == 0 && scheduler->running->state != FINISHED)
         {
-            running->remainingTime -= timeSlice;
             remainingTimeSlice = timeSlice;
             
             if (!empty(scheduler->readyQueue))
             {
-                stopProcess(running);
+                stopProcess(scheduler->running);
                 logEvent();
             }
         }
 
-        if (running->state != STARTED &&
-            running->state != RESUMED &&
+        if (scheduler->running->state != STARTED &&
+            scheduler->running->state != RESUMED &&
             !empty(scheduler->readyQueue))
         {
             remainingTimeSlice = timeSlice;
-            running = peek(scheduler->readyQueue);
+            scheduler->running = peek(scheduler->readyQueue);
             dequeue(scheduler->readyQueue);
 
-            if (running->startTime == 0)
-                startProcess(running);
+            if (scheduler->running->startTime == 0)
+                startProcess(scheduler->running);
             else
-                resumeProcess(running);
+                resumeProcess(scheduler->running);
 
             logEvent();
         }
 
-        if (running->state != STARTED && running->state != RESUMED)
+        if (scheduler->running->state != STARTED && scheduler->running->state != RESUMED)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
@@ -292,25 +263,41 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
 float getAvgTA(Scheduler *scheduler)
 {
-    scheduler->avgTA = scheduler->avgTA / scheduler->numProcesses;
+    scheduler->avgTA = (float) scheduler->totalTA / (float) scheduler->numProcesses;
     return scheduler->avgTA;
 }
 
 float getAvgWTA(Scheduler *scheduler)
 {
-    scheduler->avgWTA = scheduler->avgWTA / scheduler->numProcesses;
+    scheduler->avgWTA = (float) scheduler->totalWTA / (float) scheduler->numProcesses;
     return scheduler->avgWTA;
 }
 
 float getCpuUtilization(Scheduler *scheduler)
 {
-    return ((getTime() - scheduler->idleTime) / getTime()) * 100;
+    return ((float) (getTime() - scheduler->idleTime) / (float) getTime()) * 100;
 }
 
 float getAvgWaiting(Scheduler *scheduler)
 {
-    scheduler->avgWaiting = scheduler->totalWaiting / scheduler->numProcesses;
+    scheduler->avgWaiting = (float) scheduler->totalWaiting / (float) scheduler->numProcesses;
     return scheduler->avgWaiting;
+}
+
+float getSTD(Scheduler *scheduler){
+
+    PCB* current;
+    float avgWTA = getAvgWTA(scheduler);
+    float sum = 0;
+
+    while(!empty(scheduler->trash)){
+        current = peek(scheduler->trash);
+        dequeue(scheduler->trash);
+        sum += pow((current->weightedTurnaround - avgWTA),2);
+        free(current);
+    }
+
+    return sqrt(sum);
 }
 
 void addProcessToReady(Scheduler* s,Process p)
@@ -322,17 +309,18 @@ void addProcessToReady(Scheduler* s,Process p)
 
 void outputSummary(Scheduler* s)
 {
-    int cpu = getCpuUtilization(s);
-    int avgWTA = getAvgWTA(s);
-    int avgTA = getAvgTA(s);
-    int avgWaiting = getAvgWaiting(s);
+    float cpu = getCpuUtilization(s);
+    float avgWTA = getAvgWTA(s);
+    float avgTA = getAvgTA(s);
+    float avgWaiting = getAvgWaiting(s);
+    float std = getSTD(s);
 
-    printPerf(output, cpu, avgWTA, avgWaiting, 0);
+    printPerf(output, cpu, avgWTA, avgWaiting,std);
 }
 
 void resumeProcess(PCB* process){
     process->state = RESUMED;
-    process->waitingTime += getTime() - running->preemptedAt;
+    process->waitingTime += getTime() - scheduler->running->preemptedAt;
 
     kill(process->pid,SIGCONT);   
 }
@@ -346,7 +334,6 @@ void startProcess(PCB* process){
 
     if (pid == 0)
     {
-        printf("forkked\n");
         char remainingTimeStr[10];
         sprintf(remainingTimeStr, "%d", process->remainingTime);
         execl("./process.out", "./process.out", remainingTimeStr, NULL);
@@ -362,7 +349,61 @@ void stopProcess(PCB* process){
     kill(process->pid, SIGSTOP);
 }
 
+void finishProcess(PCB* process){
+    process->state = FINISHED;
+    process->finishTime = getTime();
+    process->remainingTime = 0;
+    process->responseTime = process->startTime - process->arrivalTime;
+    process->turnaround = process->finishTime - process->arrivalTime;
+    process->weightedTurnaround = (float) process->turnaround / (float) process->runningTime;
+}
+
 void logEvent(){
-    printLog(output, running, getTime());
-    printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
+    printLog(output, scheduler->running, getTime());
+    printf("Process %d %s at: %d\n", scheduler->running->id, state(scheduler->running->state), getTime());
+}
+
+void recieveProcess(int signum)
+{
+    processMsg msg;
+    
+    while (true)
+    {
+        int rec_val = msgrcv(msgQueueID, &msg, sizeof(msg.newProcess), SCHEDULER_TYPE, IPC_NOWAIT);
+        if (rec_val == -1 && errno == ENOMSG)
+        {
+            break;
+        }
+        else if (rec_val == -1 && errno != ENOMSG)
+        {
+            perror("Scheduler: Failed receiving from message queue\n");
+            break;
+        }
+        
+        addProcessToReady(scheduler,msg.newProcess);
+    }
+
+    waitingForSignal = 0;
+    signal(SIGUSR1, recieveProcess);
+}
+
+void clearResources(int signum)
+{
+    outputSummary(scheduler);
+    free(scheduler);
+    disconnectClk(true);
+    exit(0);
+}
+
+void terminateProcess(int signum)
+{
+    finishProcess(scheduler->running);
+    enqueue(scheduler->running,scheduler->trash);
+    
+    scheduler->totalTA += scheduler->running->turnaround;
+    scheduler->totalWTA += scheduler->running->weightedTurnaround;
+    scheduler->totalWaiting += scheduler->running->waitingTime;
+
+    logEvent();
+    signal(SIGUSR2, terminateProcess);
 }
