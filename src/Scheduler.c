@@ -4,7 +4,6 @@
 
 int msgQueueID;
 PCB *running;
-PCB *top;
 int waitingForSignal = 1;
 
 struct IO* output;
@@ -56,6 +55,12 @@ void HPFSchedule(Scheduler *scheduler);
 
 void addProcessToReady(Scheduler* s,Process p);
 void outputSummary(Scheduler* s);
+
+void resumeProcess(PCB* process);
+void startProcess(PCB* process);
+void stopProcess(PCB* process);
+void logEvent();
+
 
 // SIGNAL HANDLERS //
 
@@ -110,11 +115,9 @@ void terminateProcess(int signum)
     signal(SIGUSR2, terminateProcess);
 }
 
-
-
 int main(int argc, char *argv[])
 {
-    createIO(output);
+    output = createIO();
 
     signal(SIGUSR1, recieveProcess);
     signal(SIGUSR2, terminateProcess);
@@ -128,7 +131,6 @@ int main(int argc, char *argv[])
 
     Process initProcess = {.id = -1, .arrivalTime = 0, .priority = 0, .runningTime = 0};
 
-    top = createPCB(initProcess);
     running = createPCB(initProcess);
     running->state = STOPPED;
 
@@ -161,31 +163,17 @@ void HPFSchedule(Scheduler *scheduler)
             continue;
         }
 
-        while (waitingForSignal)
-            ;
+        while (waitingForSignal);
 
         waitingForSignal = 1;
 
         if (running->state != STARTED && !empty(scheduler->readyQueue))
         {
             running = peek(scheduler->readyQueue);
-            running->state = STARTED;
-            running->startTime = getTime();
-            running->waitingTime = getTime() - running->arrivalTime;
-
             dequeue(scheduler->readyQueue);
 
-            printLog(output, running, getTime());
-            printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
-
-            int pid = safe_fork();
-
-            if (pid == 0)
-            {
-                char runningTimeStr[10];
-                sprintf(runningTimeStr, "%d", running->runningTime);
-                execl("./process.out", "./process", runningTimeStr, NULL);
-            }
+            startProcess(running);
+            logEvent();
         }
 
         if (running->state != STARTED)
@@ -198,18 +186,14 @@ void HPFSchedule(Scheduler *scheduler)
 
 void SRTNScheduler(Scheduler *scheduler)
 {
-    int pid;
     int timer = getTime();
 
     while (true)
     {
         if (timer == getTime())
-        {
             continue;
-        }
 
-        while (waitingForSignal)
-            ;
+        while (waitingForSignal);
         waitingForSignal = 1;
 
         running->remainingTime -= 1;
@@ -224,22 +208,14 @@ void SRTNScheduler(Scheduler *scheduler)
         }
 
         if (empty(scheduler->readyQueue))
-        {
             continue;
-        }
 
-        top = peek(scheduler->readyQueue);
+        PCB* top = peek(scheduler->readyQueue);
 
         if (running->state != FINISHED && top->remainingTime < running->remainingTime)
         {
-            running->state = STOPPED;
-            running->preemptedAt = getTime();
-            printLog(output, running, getTime()); // logging
-            printf("process %d %s at time %d, remainig time = %d\n",
-                   running->id, state(running->state),
-                   running->remainingTime, getTime());
-            enqueue(running, scheduler->readyQueue);
-            kill(pid, SIGINT);
+            stopProcess(running);
+            logEvent();
         }
 
         if (running->state != STARTED && running->state != RESUMED)
@@ -248,47 +224,27 @@ void SRTNScheduler(Scheduler *scheduler)
             dequeue(scheduler->readyQueue);
 
             if (running->startTime == 0)
-            {
-                running->state = STARTED;
-                running->startTime = getTime();
-                running->waitingTime += running->startTime - running->arrivalTime;
-            }
+                startProcess(running);
             else
-            {
-                running->state = RESUMED;
-                running->waitingTime += getTime() - running->preemptedAt;
-            }
+                resumeProcess(running);
 
-            pid = safe_fork();
 
-            if (pid == 0)
-            {
-                char remainingTimeStr[10];
-                sprintf(remainingTimeStr, "%d", running->remainingTime);
-                printf("Process %d %s at: %d\n", running->id,
-                       state(running->state), getTime());
-                execl("./process.out", "./process.out", remainingTimeStr, NULL);
-            }
-            printLog(output, running, getTime()); // logging
+            logEvent();
         }
     }
 }
 
 void RRScheduler(Scheduler *scheduler, int timeSlice)
 {
-    int pid;
     int timer = getTime();
     int remainingTimeSlice = timeSlice;
+
     while (1)
     {
         if (timer == getTime())
-        {
             continue;
-        }
 
-        while (waitingForSignal)
-            ;
-
+        while (waitingForSignal);
         waitingForSignal = 1;
 
         timer++;
@@ -303,17 +259,12 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         {
             running->remainingTime -= timeSlice;
             remainingTimeSlice = timeSlice;
+            
             if (!empty(scheduler->readyQueue))
             {
-                running->state = STOPPED;
-                running->preemptedAt = getTime();
-
-                kill(pid, SIGINT);
-                enqueue(running, scheduler->readyQueue);
+                stopProcess(running);
                 printLog(output, running, getTime());
-                printf("process %d %s at time %d, remainig time = %d\n",
-                       running->id, state(running->state),
-                       running->remainingTime, getTime());
+                logEvent();
             }
         }
 
@@ -325,29 +276,12 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             running = peek(scheduler->readyQueue);
             dequeue(scheduler->readyQueue);
 
-            pid = safe_fork();
-
             if (running->startTime == 0)
-            {
-                running->state = STARTED;
-                running->startTime = getTime();
-                running->waitingTime += running->startTime - running->arrivalTime;
-            }
+                startProcess(running);
             else
-            {
-                running->state = RESUMED;
-                running->waitingTime += getTime() - running->preemptedAt;
-            }
+                resumeProcess(running);
 
-            if (pid == 0)
-            {
-                char remainingTimeStr[10];
-                sprintf(remainingTimeStr, "%d", running->remainingTime);
-                printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
-
-                execl("./process.out", "./process.out", remainingTimeStr, NULL);
-            }
-            printLog(output, running, getTime());
+            logEvent();
         }
 
         if (running->state != STARTED && running->state != RESUMED)
@@ -357,8 +291,6 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         }
     }
 }
-
-
 
 float getAvgTA(Scheduler *scheduler)
 {
@@ -383,7 +315,6 @@ float getAvgWaiting(Scheduler *scheduler)
     return scheduler->avgWaiting;
 }
 
-
 void addProcessToReady(Scheduler* s,Process p)
 {
     PCB *newProcessPCB = createPCB(p);
@@ -401,3 +332,48 @@ void outputSummary(Scheduler* s)
     printPerf(output, cpu, avgWTA, avgWaiting, 0);
 }
 
+void resumeProcess(PCB* process){
+    process->state = RESUMED;
+    process->waitingTime += getTime() - running->preemptedAt;
+
+    int pid = safe_fork();      
+
+    if (pid == 0)
+    {
+        char remainingTimeStr[10];
+        sprintf(remainingTimeStr, "%d", process->remainingTime);
+        execl("./process.out", "./process.out", remainingTimeStr, NULL);
+    }
+
+    process->pid = pid;
+}
+
+void startProcess(PCB* process){
+    process->state = STARTED;
+    process->startTime = getTime();
+    process->waitingTime += process->startTime - process->arrivalTime;
+
+    int pid = safe_fork();
+
+    if (pid == 0)
+    {
+        printf("forkked\n");
+        char remainingTimeStr[10];
+        sprintf(remainingTimeStr, "%d", process->remainingTime);
+        execl("./process.out", "./process.out", remainingTimeStr, NULL);
+    }
+
+    process->pid = pid;
+}
+
+void stopProcess(PCB* process){
+    process->state = STOPPED;
+    process->preemptedAt = getTime();
+    enqueue(process, scheduler->readyQueue);
+    kill(process->pid, SIGINT);
+}
+
+void logEvent(){
+    printLog(output, running, getTime());
+    printf("Process %d %s at: %d\n", running->id, state(running->state), getTime());
+}

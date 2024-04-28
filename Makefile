@@ -8,10 +8,8 @@ build: clean
 	gcc -c src/DataStructures/PriorityQueue.c
 	gcc -c src/DataStructures/Queue.c
 
-	gcc -c src/Includes/IO.c
-
 	gcc -c src/Scheduler.c 
-	gcc Scheduler.o PriorityQueue.o  Queue.o IO.o -o scheduler.out
+	gcc Scheduler.o PriorityQueue.o  Queue.o  -o scheduler.out
 	
 	gcc -c src/ProcessGen.c 
 	gcc ProcessGen.o Queue.o -o pg.out
