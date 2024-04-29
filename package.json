@@ -1,0 +1,14 @@
+{
+  "name": "tux-edo-gui",
+  "version": "1.0.0",
+  "description": "Scheduler GUI for Tux-Edo",
+  "main": "main.js",
+  "scripts": {
+    "test": "electron ."
+  },
+  "author": "Shehab Khaled",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^30.0.1"
+  }
+}

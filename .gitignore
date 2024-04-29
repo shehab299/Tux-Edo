@@ -23,3 +23,5 @@
 # Output files
 *.log
 *.perf
+
+node_modules/

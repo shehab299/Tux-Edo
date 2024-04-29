@@ -1,0 +1,46 @@
+#tux-img{
+    width: 200px;
+    height: 200px;
+}
+
+.show{
+    display: block;
+}
+
+.hidden{
+    display: none;
+}
+
+.upper-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+
+.path-container{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.lower-container{
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+
+#start-btn{
+    border: 2px solid black;
+    border-radius: 5px;   
+}
+
+
+

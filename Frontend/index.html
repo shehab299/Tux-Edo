@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Electron Dialog App</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="upper-container">
+      <img src="img/img.jpeg" alt="Tux-In-Tux" id="tux-img">
+      <h1>Tux-Edo</h1>
+      <div class="path-container">
+        <input type="text" name="seed-path" disabled id="seed-path" placeholder="path">
+        <button id="add-seed-file">Add Seed</button>
+      </div>
+    </div>
+    <hr>
+
+    <div class="lower-container">
+      <select name="algo" id="algo">
+        <option value="RR">RR</option>
+        <option value="SRTN" selected>SRTN</option>
+        <option value="HPF">HPF</option>
+      </select>
+      <input type="number" name="time-slice" id="time-slice" class="hidden"  placeholder="Time Slice">
+    </div>
+
+    <button id="start-btn">Start Simulation</button>
+    <script src="js/index.js"> </script>
+</body>
+</html>
