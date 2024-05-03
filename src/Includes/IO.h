@@ -19,7 +19,7 @@ const char* headers[NFIELDS] = {
     "remain\t%d\t",
     "wait\t%d\t",
     "TA\t%d\t",
-    "WTA\t%d"
+    "WTA\t%.2f"
 };
 
 void intializeLogFile(struct IO* output)
@@ -75,17 +75,19 @@ void printLog(struct IO* output, PCB *running, int clock)
                    running->id,
                    running->state,
                    running->arrivalTime,
-                   running->runningTime - running->remainingTime,
+                   running->runningTime,
                    running->remainingTime,
                    running->waitingTime,
-                   running->turnaround,
-                   running->weightedTurnaround
-                };
+                   running->turnaround};
+                   //running->weightedTurnaround
+                //};
 
     for(int i = 0; i < nfields; i++)
     {
         if(i == 2)
             fprintf(output->logFile,headers[i],state(running->state));
+        else if (i == 8)
+            fprintf(output->logFile, headers[i], running->weightedTurnaround);
         else
             fprintf(output->logFile,headers[i],array[i]);
     }
@@ -95,8 +97,8 @@ void printLog(struct IO* output, PCB *running, int clock)
 
 void printPerf(struct IO* output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
 {
-    fprintf(output->perfFile, "CPU utilization = %f\n", utilization);
-    fprintf(output->perfFile, "Avg WTA = %f\n", avgWTA);
-    fprintf(output->perfFile, "Avg Waiting = %f\n", avgWaiting);
-    fprintf(output->perfFile, "Std WTA= %f\n", stdWTA);
+    fprintf(output->perfFile, "CPU utilization = %.2f\%\n", utilization);
+    fprintf(output->perfFile, "Avg WTA = %.2f\n", avgWTA);
+    fprintf(output->perfFile, "Avg Waiting = %.2f\n", avgWaiting);
+    fprintf(output->perfFile, "Std WTA = %.2f\n", stdWTA);
 }

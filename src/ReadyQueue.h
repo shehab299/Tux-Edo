@@ -19,7 +19,7 @@ bool comparePriority(void *a, void *b)
 {
     PCB *processA = (PCB *)a;
     PCB *processB = (PCB *)b;
-    return processA->priority < processB->priority;
+    return processA->priority <= processB->priority;
 }
 
 bool compareRemaining(void *a, void *b)
