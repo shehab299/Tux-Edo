@@ -34,6 +34,12 @@ typedef struct processMsg
     Process newProcess;
 } processMsg;
 
+typedef struct timeMsg
+{
+    long mtype;
+    int time;
+} timeMsg;
+
 enum ProcessStates
 {
     STARTED = 1,
@@ -47,6 +53,12 @@ enum SchedulingAlgorithm
     HPF = 1,
     SRTN,
     RR
+};
+
+enum MessageQueues
+{
+    PROCESS_MESSAGE=65,
+    TIME_MESSAGE,
 };
 
 typedef struct PCB
@@ -72,6 +84,7 @@ typedef struct PCB
 enum MessageTypes
 {
     SCHEDULER_TYPE = 505,
+    TIME_PROCESS_TYPE
 };
 
 int *shmaddr;
@@ -157,9 +170,9 @@ const char *state(enum ProcessStates state)
     }
 }
 
-int createMessageQueue()
+int createMessageQueue(int proj_id)
 {
-    key_t key_id = ftok("../keyfile", 65);
+    key_t key_id = ftok("../keyfile", proj_id);
     int msgQueueID = msgget(key_id, 0666 | IPC_CREAT);
 
     if (msgQueueID == -1)

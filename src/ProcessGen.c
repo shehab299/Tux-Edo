@@ -11,7 +11,7 @@ int schedulerId;
 
 int main(int argc, char *argv[])
 {
-    msgQueueID = createMessageQueue();
+    msgQueueID = createMessageQueue(PROCESS_MESSAGE);
 
     signal(SIGINT, clearResources);
 
@@ -107,18 +107,21 @@ void initalizeQueue(char *filePath, Queue *pQueue)
         }
         else
         {
-            ungetc(ch, fptr);
-            fscanf(fptr, "%d %d %d %d", &id, &arrival, &runtime, &priority);
+            if ((ch = fgetc(fptr)) != EOF)
+            {
+                ungetc(ch, fptr);
+                fscanf(fptr, "%d %d %d %d", &id, &arrival, &runtime, &priority);
 
-            newProcess = (Process *)malloc(sizeof(Process));
-            newProcess->arrivalTime = arrival;
-            newProcess->id = id;
-            newProcess->runningTime = runtime;
-            newProcess->priority = priority;
+                newProcess = (Process *)malloc(sizeof(Process));
+                newProcess->arrivalTime = arrival;
+                newProcess->id = id;
+                newProcess->runningTime = runtime;
+                newProcess->priority = priority;
 
-            q_enqueue(pQueue, newProcess);
+                q_enqueue(pQueue, newProcess);
 
-            printf("Successfully read process with id %d\n", id);
+                printf("Successfully read process with id %d\n", id);
+            }
         }
     }
 }

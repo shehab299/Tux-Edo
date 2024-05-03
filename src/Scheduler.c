@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     signal(SIGUSR2, terminateProcess);
     signal(SIGINT, clearResources);
 
-    msgQueueID = createMessageQueue();
+    msgQueueID = createMessageQueue(PROCESS_MESSAGE);
     connectToClk();
 
     int selectedAlgo = atoi(argv[1]);
@@ -208,6 +208,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 {
     int timer = getTime();
     int remainingTimeSlice = timeSlice;
+    int process_msgQueueID = createMessageQueue(TIME_MESSAGE);
 
     while (1)
     {
@@ -248,7 +249,11 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             if (scheduler->running->startTime == 0)
                 startProcess(scheduler->running);
             else
+            {
+                timeMsg m = {.mtype = TIME_PROCESS_TYPE, .time = timer};
+                msgsnd(process_msgQueueID, &m, sizeof(int), IPC_NOWAIT);
                 resumeProcess(scheduler->running);
+            }
 
             logEvent();
         }
@@ -322,7 +327,8 @@ void resumeProcess(PCB* process){
     process->state = RESUMED;
     process->waitingTime += getTime() - scheduler->running->preemptedAt;
 
-    kill(process->pid,SIGCONT);   
+    kill(process->pid,SIGUSR1);
+    kill(process->pid, SIGCONT);
 }
 
 void startProcess(PCB* process){
