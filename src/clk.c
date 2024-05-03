@@ -9,13 +9,13 @@ void cleanup(int signum)
     exit(0);
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     printf("Clock starting\n");
     signal(SIGINT, cleanup);
-    int clk = 0;
+    int clk = -1;
 
-    shmid = shmget(SHKEY, 4, IPC_CREAT | 0644);     
+    shmid = shmget(SHKEY, 4, IPC_CREAT | 0644);
 
     if ((long)shmid == -1)
     {
@@ -23,7 +23,7 @@ int main(int argc, char * argv[])
         exit(-1);
     }
 
-    int * shmaddr = (int *) shmat(shmid, (void *)0, 0);
+    int *shmaddr = (int *)shmat(shmid, (void *)0, 0);
 
     if ((long)shmaddr == -1)
     {
@@ -31,12 +31,11 @@ int main(int argc, char * argv[])
         exit(-1);
     }
 
-    *shmaddr = clk; 
+    *shmaddr = clk;
 
     while (1)
     {
         sleep(1);
         (*shmaddr)++;
     }
-
 }

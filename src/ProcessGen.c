@@ -23,11 +23,11 @@ int main(int argc, char *argv[])
 
     Queue *pQueue = createQueue();
     initalizeQueue("./processes.txt", pQueue);
-    
+
     int *selectedAlgo = malloc(sizeof(int));
     int *timeSlice = malloc(sizeof(int));
 
-    userInput(selectedAlgo,timeSlice);
+    userInput(selectedAlgo, timeSlice);
 
     int clkPid = safe_fork();
 
@@ -47,10 +47,10 @@ int main(int argc, char *argv[])
         if (*selectedAlgo == 3)
         {
             sprintf(timeSliceStr, "%d", *timeSlice);
-            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr,timeSliceStr, NULL);
+            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, timeSliceStr, NULL);
         }
         else
-        execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
+            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
 
     sleep_ms(100);
@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        int send = 0;
         timer++;
 
         while (nextProcess != NULL && timer == nextProcess->arrivalTime)
@@ -72,8 +71,6 @@ int main(int argc, char *argv[])
             sendMessageToScheduler(msgQueueID, nextProcess);
             q_dequeue(pQueue);
             nextProcess = q_peek(pQueue);
-
-            send = 1;
         }
 
         kill(schedulerId, SIGUSR1);
