@@ -321,9 +321,7 @@ void outputSummary(Scheduler* s)
 void resumeProcess(PCB* process){
     process->state = RESUMED;
     process->waitingTime += getTime() - scheduler->running->preemptedAt;
-
-    // kill(process->pid,SIGCONT);   
-
+    
     const pid = safe_fork();
 
     if (pid == 0)
