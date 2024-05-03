@@ -29,14 +29,7 @@ int main(int argc, char *argv[])
 
     userInput(selectedAlgo, timeSlice);
 
-    int clkPid = safe_fork();
-
-    if (clkPid == 0)
-        execl("./clk.out", "./clk.out", NULL);
-
-    connectToClk();
-
-    schedulerId = fork();
+    schedulerId = safe_fork();
 
     if (schedulerId == 0)
     {
@@ -52,6 +45,17 @@ int main(int argc, char *argv[])
         else
             execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
     }
+
+
+
+    int clkPid = safe_fork();
+
+    if (clkPid == 0)
+        execl("./clk.out", "./clk.out", NULL);
+
+    connectToClk();
+
+
 
     sleep_ms(100);
 

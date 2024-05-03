@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 {
     printf("Clock starting\n");
     signal(SIGINT, cleanup);
-    int clk = -1;
+    int clk = -2;
 
     shmid = shmget(SHKEY, 4, IPC_CREAT | 0644);
 

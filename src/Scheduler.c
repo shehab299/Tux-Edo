@@ -322,7 +322,18 @@ void resumeProcess(PCB* process){
     process->state = RESUMED;
     process->waitingTime += getTime() - scheduler->running->preemptedAt;
 
-    kill(process->pid,SIGCONT);   
+    // kill(process->pid,SIGCONT);   
+
+    const pid = safe_fork();
+
+    if (pid == 0)
+    {
+        char runningTimeStr[10];
+        sprintf(runningTimeStr, "%d", process->remainingTime);
+        execl("./process.out", "./process", runningTimeStr, NULL);
+    }
+
+    process->pid = pid;
 }
 
 void startProcess(PCB* process){
@@ -346,7 +357,7 @@ void stopProcess(PCB* process){
     process->state = STOPPED;
     process->preemptedAt = getTime();
     enqueue(process, scheduler->readyQueue);
-    kill(process->pid, SIGSTOP);
+    kill(process->pid, SIGINT);
 }
 
 void finishProcess(PCB* process){

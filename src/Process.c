@@ -3,11 +3,15 @@
 #include <string.h>
 #include <signal.h>
 
+
+int timer;
+
 void killed(int signum)
 {
     signal(SIGINT, killed);
     exit(0);
 }
+
 
 int main(int argc, char const *argv[])
 {
@@ -16,13 +20,18 @@ int main(int argc, char const *argv[])
     connectToClk();
 
     int executionTime = atoi(argv[1]);
-    int timer = getTime();
+    timer = getTime();
 
-    while (executionTime != 0)
+    while (executionTime > 0)
     {
         if (timer != getTime())
         {
             timer++;
+
+            if(timer != getTime()){
+                timer = getTime();
+            }
+
             executionTime--;
         }
     }
