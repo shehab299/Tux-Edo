@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define NFIELDS 9
 
@@ -79,13 +80,21 @@ void printLog(struct IO* output, PCB *running, int clock)
                    running->remainingTime,
                    running->waitingTime,
                    running->turnaround,
-                   running->weightedTurnaround
                 };
 
     for(int i = 0; i < nfields; i++)
     {
         if(i == 2)
             fprintf(output->logFile,headers[i],state(running->state));
+        else if (i==8)
+        {
+            if (fmod(running->weightedTurnaround,1.0) == 0.0)
+                fprintf(output->logFile, "WTA\t%.0f", running->weightedTurnaround);
+            else if (fmod(running->weightedTurnaround*10, 1.0) == 0.0)
+                fprintf(output->logFile, "WTA\t%.1f", running->weightedTurnaround);
+                else
+                fprintf(output->logFile, "WTA\t%.2f", running->weightedTurnaround);
+        }
         else
             fprintf(output->logFile,headers[i],array[i]);
     }
