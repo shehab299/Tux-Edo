@@ -8,6 +8,7 @@ void initalizeQueue(char *filePath, Queue *queue);
 
 int msgQueueID;
 int schedulerId;
+Queue* pQueue;
 
 int main(int argc, char *argv[])
 {
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    Queue *pQueue = createQueue();
+    pQueue = createQueue();
     initalizeQueue("./processes.txt", pQueue);
 
     int *selectedAlgo = malloc(sizeof(int));
@@ -87,6 +88,11 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
+    if(!q_empty(pQueue)){
+        signal(SIGINT,clearResources);
+        return;
+    }   
+
     msgctl(msgQueueID, IPC_RMID, (struct msqid_ds *)0);
     kill(schedulerId, SIGINT);
     disconnectClk(true);

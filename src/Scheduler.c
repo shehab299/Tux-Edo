@@ -142,6 +142,7 @@ void HPFSchedule(Scheduler *scheduler)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
+            kill(getppid(),SIGINT);
         }
 
         scheduler->running->remainingTime--;
@@ -168,6 +169,7 @@ void SRTNScheduler(Scheduler *scheduler)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
+            kill(getppid(),SIGINT);
         }
 
 
@@ -257,6 +259,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         {
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
+            kill(getppid(),SIGINT);
         }
     }
 }
@@ -321,8 +324,8 @@ void outputSummary(Scheduler* s)
 void resumeProcess(PCB* process){
     process->state = RESUMED;
     process->waitingTime += getTime() - scheduler->running->preemptedAt;
-    
-    const pid = safe_fork();
+
+    int pid = safe_fork();
 
     if (pid == 0)
     {
