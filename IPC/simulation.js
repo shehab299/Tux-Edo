@@ -1,12 +1,17 @@
 const {exec , spawn } = require('child_process');
 const path = require('path');
 
+let pcbs = []
+
 const startSimulation = (event , seedPath, algo, timeSlice) => {
 
     if(timeSlice === undefined || timeSlice === "")
         timeSlice = "0";
 
-    const subprocess = spawn('/home/shehab/Tux-Edo/Simulation2/pg.out', [seedPath, algo, timeSlice]);
+    pcbs = [];
+
+    const filepath = path.join(process.cwd(), 'Simulation2' ,'pg.out')
+    const subprocess = spawn(filepath, [seedPath, algo, timeSlice]);
 
     console.log(subprocess);
 
@@ -17,27 +22,41 @@ const startSimulation = (event , seedPath, algo, timeSlice) => {
         processFile(filepath)
     });
 
+
 };
 
 const fs = require('fs');
+const { ipcMain, BrowserWindow } = require('electron');
+
+
+const PCB = (time,processId,action,arrive,total,remain,wait,ta,wta) => {
+    return {
+        time,processId,action,arrive,total,remain,wait,ta,wta
+    }
+}
 
 function processLine(line) {
-    const data = line.split('/\s+/)');
+    const data = line.split(/\s+/);
     
-    const time = parseInt(data[2]);
-    const processId = parseInt(data[4]);
+    const time = data[2];
+    const processId = data[4];
     const action = data[5];
-    const arrive = parseInt(data[7]);
-    const total = parseInt(data[9]);
-    const remain = parseInt(data[11]);
-    const wait = parseInt(data[13]);
-    const ta = data[14] === 'TA' ? parseInt(data[15]) : null;
-    const wta = data[16] === 'WTA' ? parseFloat(data[17]) : null;
+    const arrive = data[7];
+    const total = data[9];
+    const remain = data[11];
+    const wait = data[13];
+    const ta = data[14] === 'TA' ? data[15] : null;
+    const wta = data[16] === 'WTA' ? data[17] : null;
 
-    console.log(`Time: ${time}, Process ID: ${processId}, Action: ${action}, Total: ${total}, Remain: ${remain}, Wait: ${wait}, TA: ${ta}, WTA: ${wta}`);
+    const _process = PCB(time,processId,action,arrive,total,remain,wait,ta,wta);
+
+    return _process;
 }
 
 function processFile(filename) {
+
+
+
     const fileStream = fs.createReadStream(filename);
     const rl = require('readline').createInterface({
         input: fileStream,
@@ -45,14 +64,16 @@ function processFile(filename) {
     });
 
     rl.on('line', (line) => {
-        processLine(line);
+        pcbs.push(processLine(line));
     });
 
     rl.on('close', () => {
-        console.log('File reading complete.');
+        console.log("closed");
+        BrowserWindow.getAllWindows()[0].webContents.send('simulation-end', pcbs);
     });
 }
 
 
 
 exports.startSimulation = startSimulation;
+exports.pcbs = pcbs
