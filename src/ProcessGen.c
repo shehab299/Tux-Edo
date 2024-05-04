@@ -44,13 +44,15 @@ int main(int argc, char *argv[])
         sprintf(selectedAlgoStr, "%d", *selectedAlgo);
 
         char timeSliceStr[10];
+        char numProcessesStr[10];
+        sprintf(numProcessesStr, "%d", q_getSize((void *)pQueue));
         if (*selectedAlgo == 3)
         {
             sprintf(timeSliceStr, "%d", *timeSlice);
-            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, timeSliceStr, NULL);
+            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, numProcessesStr, timeSliceStr, NULL);
         }
         else
-            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, NULL);
+            execl("./scheduler.out", "./scheduler.out", selectedAlgoStr, numProcessesStr, NULL);
     }
 
     sleep_ms(100);

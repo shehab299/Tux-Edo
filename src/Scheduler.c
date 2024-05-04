@@ -50,8 +50,7 @@ Scheduler *createScheduler(int schedulingAlgo)
     return scheduler;
 }
 
-
-
+int numProcesses;
 
 float getAvgTA(Scheduler *scheduler);
 float getAvgWTA(Scheduler *scheduler);
@@ -97,6 +96,7 @@ int main(int argc, char *argv[])
 
     scheduler->running = createPCB(initProcess);
     scheduler->running->state = STOPPED;
+    numProcesses = atoi(argv[2]);
 
     if (selectedAlgo == HPF)
     {
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        int timeSlice = atoi(argv[2]);
+        int timeSlice = atoi(argv[3]);
         RRScheduler(scheduler, timeSlice);
     }
 
@@ -140,17 +140,21 @@ void HPFSchedule(Scheduler *scheduler)
 
         if (scheduler->running->state != STARTED)
         {
+           if(numProcesses == 0)
+               break;
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
         }
 
         scheduler->running->remainingTime--;
     }
+    kill(getpid(), SIGINT);
 }
 
 void SRTNScheduler(Scheduler *scheduler)
 {
     int timer = getTime();
+    int process_msgQueueID = createMessageQueue(TIME_MESSAGE);
 
     while (true)
     {
@@ -166,6 +170,8 @@ void SRTNScheduler(Scheduler *scheduler)
             scheduler->running->state != STARTED &&
             scheduler->running->state != RESUMED)
         {
+            if(numProcesses == 0) 
+                break;
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
         }
@@ -194,14 +200,18 @@ void SRTNScheduler(Scheduler *scheduler)
             if (scheduler->running->startTime == 0)
                 startProcess(scheduler->running);
             else
-                resumeProcess(scheduler->running);
-
+               {
+                   timeMsg m = {.mtype = TIME_PROCESS_TYPE, .time = timer};
+                   msgsnd(process_msgQueueID, &m, sizeof(int), IPC_NOWAIT);
+                   resumeProcess(scheduler->running);
+               }
 
             logEvent();
         }
 
 
     }
+    kill(getpid(), SIGINT);
 }
 
 void RRScheduler(Scheduler *scheduler, int timeSlice)
@@ -260,10 +270,13 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
 
         if (scheduler->running->state != STARTED && scheduler->running->state != RESUMED)
         {
+            if (numProcesses == 0)
+                break;
             scheduler->idleTime++;
             printf("idle at %d\n", getTime());
         }
     }
+    kill(getpid(), SIGINT);
 }
 
 float getAvgTA(Scheduler *scheduler)
@@ -398,6 +411,7 @@ void clearResources(int signum)
     outputSummary(scheduler);
     free(scheduler);
     disconnectClk(true);
+    kill(getppid(), SIGINT);
     exit(0);
 }
 
@@ -411,5 +425,6 @@ void terminateProcess(int signum)
     scheduler->totalWaiting += scheduler->running->waitingTime;
 
     logEvent();
+    numProcesses--;
     signal(SIGUSR2, terminateProcess);
 }
