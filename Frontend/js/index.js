@@ -7,7 +7,7 @@ const startBtn = document.getElementById("start-btn");
 
 addSeedBtn.addEventListener('click' , clickHanlder)
 startBtn.addEventListener('click' , startHandler)
-algoSelectBox.addEventListener('change', selectHandler);
+// algoSelectBox.addEventListener('change', selectHandler);
 
 async function clickHanlder(event) {
     const result = await utils.getSeedFile();

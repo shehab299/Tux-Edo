@@ -18,18 +18,33 @@ function run() {
 
 }
 
-app.on('window-all-closed', () => {   
-    if (process.platform !== 'darwin') 
-        app.quit();
-});
-  
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) 
-        run();
-});
+
 
 async function start(){
     await app.whenReady();
+
+    app.on('window-all-closed', () => {   
+        if (process.platform !== 'darwin') 
+            app.quit();
+    });
+      
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) 
+            run();
+    });
+
+    process.on("SIGINT", () => {
+
+    });
+
+    process.on("SIGTERM", () => {
+        
+    });
+
+
+
+
+
     ipcMain.handle('get-seed-file', getSeedFile);
     ipcMain.handle('start',startSimulation);
     run();
