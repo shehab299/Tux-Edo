@@ -21,12 +21,4 @@ async function getSeedFile(event){
 }
 
 
-async function startSimulation(event,seedPath, algo, timeSlice) {
-    console.log(seedPath,algo,timeSlice);
-    exec(`echo ${seedPath} ${algo} ${timeSlice} >> input.txt`);
-    return "Simulation started";
-}
-
-
 exports.getSeedFile = getSeedFile;
-exports.startSimulation = startSimulation;

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, dialog , ipcMain } = require('electron');
 const path = require('path');
-const {getSeedFile,startSimulation} = require('./IPC/handlers');
-
+const {getSeedFile} = require('./IPC/handlers');
+const {startSimulation} = require('./IPC/simulation');
 
 function run() {
 
@@ -9,12 +9,12 @@ function run() {
         width: 800,
         height: 600,
         webPreferences: {
-            preload: path.join(__dirname,'preload.js')
+            preload: path.join(__dirname,'IPC','preload.js')
         }
     });
 
     window.webContents.openDevTools();
-    window.loadFile('App/index.html');
+    window.loadFile('Frontend/index.html');
 
 }
 
