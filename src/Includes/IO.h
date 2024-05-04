@@ -76,7 +76,7 @@ void printLog(struct IO* output, PCB *running, int clock)
                    running->id,
                    running->state,
                    running->arrivalTime,
-                   running->runningTime - running->remainingTime,
+                   running->runningTime,
                    running->remainingTime,
                    running->waitingTime,
                    running->turnaround,

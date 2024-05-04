@@ -302,7 +302,7 @@ float getAvgWaiting(Scheduler *scheduler)
     return scheduler->avgWaiting;
 }
 
-float getSTD(Scheduler *scheduler){
+float getSTD(Scheduler *scheduler, int numProcesses){
 
     PCB* current;
     float avgWTA = getAvgWTA(scheduler);
@@ -314,6 +314,8 @@ float getSTD(Scheduler *scheduler){
         sum += pow((current->weightedTurnaround - avgWTA),2);
         free(current);
     }
+
+    sum /= numProcesses;
 
     return sqrt(sum);
 }
@@ -331,7 +333,7 @@ void outputSummary(Scheduler* s)
     float avgWTA = getAvgWTA(s);
     float avgTA = getAvgTA(s);
     float avgWaiting = getAvgWaiting(s);
-    float std = getSTD(s);
+    float std = getSTD(s, s->numProcesses);
 
     printPerf(output, cpu, avgWTA, avgWaiting,std);
 }
