@@ -12,7 +12,7 @@ struct IO{
 };
 
 const char* headers[NFIELDS] = {
-    "#At time\t%d\t",
+    "At time\t%d\t",
     "process\t%d\t",
     "%s\t",
     "arr\t%d\t",
@@ -104,8 +104,8 @@ void printLog(struct IO* output, PCB *running, int clock)
 
 void printPerf(struct IO* output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
 {
-    fprintf(output->perfFile, "CPU utilization = %f\n", utilization);
-    fprintf(output->perfFile, "Avg WTA = %f\n", avgWTA);
-    fprintf(output->perfFile, "Avg Waiting = %f\n", avgWaiting);
-    fprintf(output->perfFile, "Std WTA= %f\n", stdWTA);
+    fprintf(output->perfFile, "CPU utilization = %.2f\%\n", utilization);
+    fprintf(output->perfFile, "Avg WTA = %.2f\n", avgWTA);
+    fprintf(output->perfFile, "Avg Waiting = %.2f\n", avgWaiting);
+    fprintf(output->perfFile, "Std WTA = %.2f\n", stdWTA);
 }
