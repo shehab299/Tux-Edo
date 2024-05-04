@@ -18,6 +18,7 @@ async function clickHanlder(event) {
 async function downloadHandler(event) {
 
     const table = document.getElementsByTagName('table')[0];
+    const table2 = document.getElementsByTagName('table')[1];
 
     if(table === undefined) {
         alert("No data to download");
@@ -30,6 +31,15 @@ async function downloadHandler(event) {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = "table_screenshot.png";
+        link.click();
+    });
+
+    const canvas2 = await html2canvas(table2);
+
+    canvas2.toBlob(function (blob) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = "table_screenshot2.png";
         link.click();
     });
 };

@@ -2,6 +2,7 @@ const {exec , spawn } = require('child_process');
 const path = require('path');
 
 let pcbs = []
+let summaries = []
 
 const startSimulation = (event , seedPath, algo, timeSlice) => {
 
@@ -9,6 +10,7 @@ const startSimulation = (event , seedPath, algo, timeSlice) => {
         timeSlice = "0";
 
     pcbs = [];
+    summaries = [];
 
     const filepath = path.join(process.cwd(), 'Simulation2' ,'pg.out')
     const subprocess = spawn(filepath, [seedPath, algo, timeSlice]);
@@ -53,9 +55,17 @@ function processLine(line) {
     return _process;
 }
 
+function processLine2(line) {
+
+    const data = line.split("=");
+
+    const key = data[0].trim();
+    const value = data[1].trim();
+
+    summaries.push({key,value});
+}
+
 function processFile(filename) {
-
-
 
     const fileStream = fs.createReadStream(filename);
     const rl = require('readline').createInterface({
@@ -68,8 +78,28 @@ function processFile(filename) {
     });
 
     rl.on('close', () => {
-        console.log("closed");
-        BrowserWindow.getAllWindows()[0].webContents.send('simulation-end', pcbs);
+        console.log("closed log");
+        const filepath2 = path.join(process.cwd() ,'scheduler.perf');
+        processFile2(filepath2);
+    });
+}
+
+
+function processFile2(filename) {
+
+    const fileStream = fs.createReadStream(filename);
+    const rl = require('readline').createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    rl.on('line', (line) => {
+        summaries.push(processLine2(line));
+    });
+
+    rl.on('close', () => {
+        console.log("closed perf");
+        BrowserWindow.getAllWindows()[0].webContents.send('simulation-end', {pcbs,summaries});
     });
 }
 
