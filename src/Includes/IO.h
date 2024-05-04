@@ -104,7 +104,7 @@ void printLog(struct IO* output, PCB *running, int clock)
 
 void printPerf(struct IO* output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
 {
-    fprintf(output->perfFile, "CPU utilization = %.2f\%\n", utilization);
+    fprintf(output->perfFile, "CPU utilization = %.2f\n", utilization);
     fprintf(output->perfFile, "Avg WTA = %.2f\n", avgWTA);
     fprintf(output->perfFile, "Avg Waiting = %.2f\n", avgWaiting);
     fprintf(output->perfFile, "Std WTA = %.2f\n", stdWTA);
