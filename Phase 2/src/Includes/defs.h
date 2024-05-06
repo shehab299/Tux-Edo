@@ -1,5 +1,6 @@
 #pragma once
-
+#ifndef _defs
+#define _defs
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -78,8 +79,17 @@ typedef struct PCB
     int finishTime;
     int turnaround;
     float weightedTurnaround;
+    int allocatedSize;
     enum ProcessStates state;
 } PCB;
+
+typedef struct Slot
+{
+    int start;
+    int end;
+    int size;
+    PCB *pcb;
+} Slot;
 
 enum MessageTypes
 {
@@ -210,3 +220,4 @@ PCB *createPCB(Process newProcess)
 
     return newPCB;
 }
+#endif
