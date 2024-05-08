@@ -1,12 +1,14 @@
 #include "Includes/defs.h"
 #include "BuddySystem.h"
 #include "DataStructures/PriorityQueue.h"
+#include "DataStructures/Queue.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 typedef struct BuddySystem
 {
     void *slots;
+    void *waitingQueue;
     int totalSize;
     int freeSize;
     int smallestFreeSize;
@@ -49,10 +51,11 @@ void *createBuddySystem(int memorySize)
     sys->smallestFreeSize = memorySize;
     sys->freeSize = memorySize;
     sys->largestFreeSize = memorySize;
-    PriorityQueue *queue = pq_create(1, compare);
-    sys->slots = queue;
+    PriorityQueue *pq_queue = pq_create(1, compare);
+    sys->waitingQueue = createQueue();
+    sys->slots = pq_queue;
     void *slot = createSlot(0, memorySize, NULL, NULL);
-    pq_enqueue(&queue, slot);
+    pq_enqueue(&pq_queue, slot);
     return sys;
 }
 
@@ -111,35 +114,37 @@ bool allocateProcess(void *_buddySystem, void *_pcb)
     PriorityQueue *queue = (PriorityQueue *)buddySystem->slots;
     PCB *pcb = (PCB *)_pcb;
 
-    int requiredSize = pow(2, ceil(log(pcb->allocatedSize) / log(2)));
-    if (requiredSize <= buddySystem->freeSize)
+    int requiredSize = pow(2, ceil(log(pcb->memsize) / log(2)));
+    bool success = false;
+    // if (requiredSize <= buddySystem->freeSize)
+    //{
+    int index = 0;
+    while (index < pq_size(queue))
     {
-        int index = 0;
-        while (index < pq_size(queue))
+        Slot *slot = ((Slot *)pq_at(queue, index));
+        if (slot->size >= requiredSize)
         {
-            Slot *slot = ((Slot *)pq_at(queue, index));
-            if (slot->size >= requiredSize)
-            {
-                 //buddySystem->largestFreeSize = (slot->size / 2 > buddySystem->largestFreeSize) ? slot->size / 2 : buddySystem->largestFreeSize;
+            // buddySystem->largestFreeSize = (slot->size / 2 > buddySystem->largestFreeSize) ? slot->size / 2 : buddySystem->largestFreeSize;
 
-                pq_remove(queue, index);
-                while (slot->size > requiredSize)
-                {
-                    slot = splitSlot(&queue, slot);
-                     //buddySystem->smallestFreeSize = (slot->size < buddySystem->smallestFreeSize) ? slot->size : buddySystem->smallestFreeSize;
-                }
-                slot->pcb = pcb;
-                pq_enqueue(&queue, slot);
-                buddySystem->freeSize -= pcb->allocatedSize;
-                break;
+            pq_remove(queue, index);
+            while (slot->size > requiredSize)
+            {
+                slot = splitSlot(&queue, slot);
+                // buddySystem->smallestFreeSize = (slot->size < buddySystem->smallestFreeSize) ? slot->size : buddySystem->smallestFreeSize;
             }
-            index++;
+            slot->pcb = pcb;
+            pq_enqueue(&queue, slot);
+            success = true;
+            buddySystem->freeSize -= pcb->memsize;
+            break;
         }
-        buddySystem->slots = queue;
-        return true;
+        index++;
     }
-    else
-        return false;
+    buddySystem->slots = queue;
+    return success;
+    // }
+    // else
+    // return false;
 }
 
 void deallocateProcess(void *_buddySystem, void *_pcb)
@@ -164,6 +169,24 @@ void deallocateProcess(void *_buddySystem, void *_pcb)
     }
 }
 
+void addProcessToWaiting(void *_buddySystem, void *_pcb)
+{
+    BuddySystem *buddySystem = (BuddySystem *)_buddySystem;
+    q_enqueue(buddySystem->waitingQueue, _pcb);
+}
+
+void *peekWaitingQueue(void *_buddySystem)
+{
+    BuddySystem *buddySystem = (BuddySystem *)_buddySystem;
+    return q_peek(buddySystem->waitingQueue);
+}
+
+void dequeWaitingQueue(void *_buddySystem)
+{
+    BuddySystem *buddySystem = (BuddySystem *)_buddySystem;
+    q_dequeue(buddySystem->waitingQueue);
+}
+
 void print(void *_buddySystem)
 {
     BuddySystem *buddySystem = (BuddySystem *)_buddySystem;
@@ -173,11 +196,11 @@ void print(void *_buddySystem)
         Slot *slot = (Slot *)pq_at(queue, i);
         Slot *parent = (Slot *)slot->parent;
         if (parent != NULL)
-            printf("%d Start = %d End = %d Size = %d  Allocated = %d  ----------- parent : Start=%d  End = %d \n", i, slot->start, slot->end, slot->size, (slot->pcb != NULL) ? slot->pcb->allocatedSize : 0, parent->start, parent->end);
+            printf("%d Start = %d End = %d Size = %d  Allocated = %d  ----------- parent : Start=%d  End = %d \n", i, slot->start, slot->end, slot->size, (slot->pcb != NULL) ? slot->pcb->memsize : 0, parent->start, parent->end);
         else
-            printf("%d Start = %d End = %d Size = %d  Allocated = %d\n", i, slot->start, slot->end, slot->size, (slot->pcb != NULL) ? slot->pcb->allocatedSize : 0);
+            printf("%d Start = %d End = %d Size = %d  Allocated = %d\n", i, slot->start, slot->end, slot->size, (slot->pcb != NULL) ? slot->pcb->memsize : 0);
     }
-    printf("Free Size = %d , smallest free size = %d , largest free siZe = %d\n",buddySystem->freeSize,buddySystem->smallestFreeSize,buddySystem->largestFreeSize);
+    printf("Free Size = %d , smallest free size = %d , largest free siZe = %d\n", buddySystem->freeSize, buddySystem->smallestFreeSize, buddySystem->largestFreeSize);
 
     printf("---------------------------------------------------------------------\n");
 }
