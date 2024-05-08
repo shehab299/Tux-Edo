@@ -20,6 +20,7 @@
 #define SHKEY 300
 #define SEM1KEY 100
 #define SEM2KEY 200
+#define MEMORYSIZE  1024
 
 typedef struct Process
 {
@@ -27,6 +28,7 @@ typedef struct Process
     int arrivalTime;
     int runningTime;
     int priority;
+    int memsize;
 } Process;
 
 typedef struct processMsg
@@ -79,7 +81,7 @@ typedef struct PCB
     int finishTime;
     int turnaround;
     float weightedTurnaround;
-    int allocatedSize;
+    int memsize;
     enum ProcessStates state;
 } PCB;
 
@@ -221,6 +223,7 @@ PCB *createPCB(Process newProcess)
     newPCB->turnaround = 0;
     newPCB->weightedTurnaround = 0.0;
     newPCB->state = STOPPED;
+    newPCB->memsize = newProcess.memsize;
 
     return newPCB;
 }
