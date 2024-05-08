@@ -18,6 +18,8 @@ void pq_dequeue(void *heap);
 
 void pq_remove(void *heap, int k);
 
+void pq_remove_element(void *heap, void *element);
+
 int pq_size(void *heap);
 
 bool pq_empty(void *heap);

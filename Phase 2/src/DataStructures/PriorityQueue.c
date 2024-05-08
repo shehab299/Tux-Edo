@@ -89,6 +89,19 @@ void pq_remove(void *_queue, int k)
     _queue = queue;
 }
 
+void pq_remove_element(void *_queue, void *element)
+{
+    PriorityQueue *queue = (PriorityQueue *)_queue;
+    for (int i = 0; i < queue->count;i++)
+    {
+        if(queue->array[i] == element)
+        {
+            pq_remove(queue, i);
+            break;
+        }
+    }
+}
+
 void pq_enqueue(void *_queue, void *k)
 {
 
@@ -119,5 +132,7 @@ void *pq_top(void *_queue)
 void *pq_at(void *_queue, int index)
 {
     PriorityQueue *queue = (PriorityQueue *)_queue;
+    if(index >= queue->count)
+        return NULL;
     return queue->array[index];
 }
