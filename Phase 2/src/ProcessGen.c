@@ -98,7 +98,7 @@ void initalizeQueue(char *filePath, Queue *pQueue)
 
     fptr = safe_fopen(filePath, "r");
 
-    int id, arrival, runtime, priority;
+    int id, arrival, runtime, priority,memsize;
     char ch;
 
     while ((ch = fgetc(fptr)) != EOF)
@@ -112,13 +112,14 @@ void initalizeQueue(char *filePath, Queue *pQueue)
             if ((ch = fgetc(fptr)) != EOF)
             {
                 ungetc(ch, fptr);
-                fscanf(fptr, "%d %d %d %d", &id, &arrival, &runtime, &priority);
+                fscanf(fptr, "%d %d %d %d %d", &id, &arrival, &runtime, &priority,&memsize);
 
                 newProcess = (Process *)malloc(sizeof(Process));
                 newProcess->arrivalTime = arrival;
                 newProcess->id = id;
                 newProcess->runningTime = runtime;
                 newProcess->priority = priority;
+                newProcess->memsize = memsize;
 
                 q_enqueue(pQueue, newProcess);
 
