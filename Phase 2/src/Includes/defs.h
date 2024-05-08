@@ -58,7 +58,7 @@ enum SchedulingAlgorithm
 
 enum MessageQueues
 {
-    PROCESS_MESSAGE=65,
+    PROCESS_MESSAGE = 65,
     TIME_MESSAGE,
 };
 
@@ -89,6 +89,10 @@ typedef struct Slot
     int end;
     int size;
     PCB *pcb;
+    void *leftHalf;
+    void *rightHalf;
+    void *parent;
+
 } Slot;
 
 enum MessageTypes
