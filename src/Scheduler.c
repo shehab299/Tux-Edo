@@ -12,9 +12,11 @@ typedef struct Scheduler
 {
     ReadyQueue *readyQueue;
     ReadyQueue *trash;
+    ReadyQueue *waitingQueue;
 
     PCB *running;
     int numProcesses;
+    int numWaitingProcesses;
     int idleTime;
     float cpuUtilization;
     float avgWTA;
@@ -34,8 +36,10 @@ Scheduler *createScheduler(int schedulingAlgo)
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
     scheduler->readyQueue = createReadyQueue(schedulingAlgo);
     scheduler->trash = createReadyQueue(RR);
+    scheduler->waitingQueue = createReadyQueue(RR);
 
     scheduler->numProcesses = 0;
+    scheduler->numWaitingProcesses = 0;
     scheduler->idleTime = 0;
     scheduler->cpuUtilization = 0.0;
     scheduler->totalTA = 0.0;
@@ -56,17 +60,19 @@ float getAvgWTA(Scheduler *scheduler);
 float getCpuUtilization(Scheduler *scheduler);
 float getAvgWaiting(Scheduler *scheduler);
 
-void SRTNScheduler(Scheduler *scheduler, BuddySystem *buddySystem);
-void RRScheduler(Scheduler *scheduler, int timeSlice, BuddySystem *buddySystem);
-void HPFSchedule(Scheduler *scheduler, BuddySystem *buddySystem);
+void SRTNScheduler(Scheduler *scheduler);
+void RRScheduler(Scheduler *scheduler, int timeSlice);
+void HPFSchedule(Scheduler *scheduler);
 
 void addProcessToReady(Scheduler *s, PCB *p);
+void addProcessToWaiting(Scheduler *s, PCB *p);
 void outputSummary(Scheduler *s);
 
 void resumeProcess(PCB *process);
 void startProcess(PCB *process);
 void stopProcess(PCB *process);
 void finishProcess(PCB *process);
+void addWaitingToReady(BuddySystem *buddySystem);
 
 void logEvent();
 
@@ -97,20 +103,20 @@ int main(int argc, char *argv[])
 
     if (selectedAlgo == HPF)
     {
-        HPFSchedule(scheduler, buddySystem);
+        HPFSchedule(scheduler);
     }
     else if (selectedAlgo == SRTN)
     {
-        SRTNScheduler(scheduler, buddySystem);
+        SRTNScheduler(scheduler);
     }
     else
     {
         int timeSlice = atoi(argv[3]);
-        RRScheduler(scheduler, timeSlice, buddySystem);
+        RRScheduler(scheduler, timeSlice);
     }
 }
 
-void HPFSchedule(Scheduler *scheduler, BuddySystem *buddySystem)
+void HPFSchedule(Scheduler *scheduler)
 {
     int timer = getTime();
 
@@ -148,7 +154,7 @@ void HPFSchedule(Scheduler *scheduler, BuddySystem *buddySystem)
     kill(getpid(), SIGINT);
 }
 
-void SRTNScheduler(Scheduler *scheduler, BuddySystem *buddySystem)
+void SRTNScheduler(Scheduler *scheduler)
 {
     int timer = getTime();
     int process_msgQueueID = createMessageQueue(TIME_MESSAGE);
@@ -210,7 +216,7 @@ void SRTNScheduler(Scheduler *scheduler, BuddySystem *buddySystem)
     kill(getpid(), SIGINT);
 }
 
-void RRScheduler(Scheduler *scheduler, int timeSlice, BuddySystem *buddySystem)
+void RRScheduler(Scheduler *scheduler, int timeSlice)
 {
     int timer = getTime();
     int remainingTimeSlice = timeSlice;
@@ -226,6 +232,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice, BuddySystem *buddySystem)
         waitingForSignal = 1;
 
         timer++;
+        addWaitingToReady(buddySystem);
         if (remainingTimeSlice != 0 &&
             (scheduler->running->state == STARTED ||
              scheduler->running->state == RESUMED))
@@ -238,8 +245,9 @@ void RRScheduler(Scheduler *scheduler, int timeSlice, BuddySystem *buddySystem)
         {
             remainingTimeSlice = timeSlice;
 
-            if (!empty(scheduler->readyQueue))
+            if (!empty(scheduler->readyQueue) && size(scheduler->readyQueue) != 1)
             {
+                dequeue(scheduler->readyQueue);
                 stopProcess(scheduler->running);
                 logEvent();
             }
@@ -251,7 +259,6 @@ void RRScheduler(Scheduler *scheduler, int timeSlice, BuddySystem *buddySystem)
         {
             remainingTimeSlice = timeSlice;
             scheduler->running = peek(scheduler->readyQueue);
-            dequeue(scheduler->readyQueue);
 
             if (scheduler->running->startTime == 0)
                 startProcess(scheduler->running);
@@ -323,6 +330,11 @@ void addProcessToReady(Scheduler *s, PCB *p)
 {
     enqueue(p, scheduler->readyQueue);
     scheduler->numProcesses++;
+}
+void addProcessToWaiting(Scheduler *s, PCB *p)
+{
+    enqueue(p, s->waitingQueue);
+    scheduler->numWaitingProcesses++;
 }
 
 void outputSummary(Scheduler *s)
@@ -406,10 +418,7 @@ void recieveProcess(int signum)
 
         PCB *pcb = createPCB(msg.newProcess);
 
-        if (!allocateProcess(buddySystem, pcb,pcb->memsize))
-            addProcessToWaiting(buddySystem, pcb);
-        else
-            addProcessToReady(scheduler, pcb);
+        addProcessToWaiting(scheduler, pcb);
     }
 
     waitingForSignal = 0;
@@ -427,10 +436,12 @@ void clearResources(int signum)
 
 void terminateProcess(int signum)
 {
+    PCB *pcb = peek(scheduler->readyQueue);
+    dequeue(scheduler->readyQueue);
     finishProcess(scheduler->running);
     enqueue(scheduler->running, scheduler->trash);
-    deallocateProcess(buddySystem, scheduler->running);
-
+    deallocateProcess(buddySystem, scheduler->running, scheduler->running->memsize);
+    pcb->allocationState = FREED;
     scheduler->totalTA += scheduler->running->turnaround;
     scheduler->totalWTA += scheduler->running->weightedTurnaround;
     scheduler->totalWaiting += scheduler->running->waitingTime;
@@ -442,11 +453,22 @@ void terminateProcess(int signum)
 
 void addWaitingToReady(BuddySystem *buddySystem)
 {
-    PCB *pcb = peekWaitingQueue(buddySystem);
-    if (allocateProcess(buddySystem,pcb,pcb->memsize))
+    while (scheduler->numWaitingProcesses > 0)
     {
-        dequeWaitingQueue(buddySystem);
-        addProcessToReady(scheduler, pcb);
+        PCB *pcb = peek(scheduler->waitingQueue);
+        // printf("Try to allocate Process = %d   \n", pcb->id);
+        // printf("Number in waiting = %d  number in ready = %d\n",size(scheduler->waitingQueue),size(scheduler->readyQueue));
+        int startLocation = -1, endLocation = -1;
+        if (allocateProcess(buddySystem, pcb, pcb->memsize,&startLocation,&endLocation))
+        {
+            pcb->startLocation = startLocation;
+            pcb->endLocation = endLocation;
+            pcb->allocationState = ALLOCATED;
+            dequeue(scheduler->waitingQueue);
+            addProcessToReady(scheduler, pcb);
+            scheduler->numWaitingProcesses--;
+        }
+        else
+            break;
     }
 }
-
