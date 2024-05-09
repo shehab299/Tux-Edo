@@ -51,6 +51,12 @@ enum ProcessStates
     FINISHED
 };
 
+enum AllocationStates
+{
+    ALLOCATED = 1,
+    FREED
+};
+
 enum SchedulingAlgorithm
 {
     HPF = 1,
@@ -82,10 +88,11 @@ typedef struct PCB
     int turnaround;
     float weightedTurnaround;
     int memsize;
+    int startLocation;
+    int endLocation;
+    enum AllocationStates allocationState;
     enum ProcessStates state;
 } PCB;
-
-
 
 enum MessageTypes
 {
@@ -176,6 +183,19 @@ const char *state(enum ProcessStates state)
     }
 }
 
+const char *allocationState(enum AllocationStates state)
+{
+    switch (state)
+    {
+    case ALLOCATED:
+        return "allocated";
+    case FREED:
+        return "freed   ";
+    default:
+        return "Unknown";
+    }
+}
+
 int createMessageQueue(int proj_id)
 {
     key_t key_id = ftok("../keyfile", proj_id);
@@ -214,6 +234,8 @@ PCB *createPCB(Process newProcess)
     newPCB->weightedTurnaround = 0.0;
     newPCB->state = STOPPED;
     newPCB->memsize = newProcess.memsize;
+    newPCB->startLocation = -1;
+    newPCB->endLocation = -1;
 
     return newPCB;
 }
