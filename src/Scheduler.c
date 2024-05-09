@@ -135,8 +135,6 @@ void HPFSchedule(Scheduler *scheduler)
         if (scheduler->running->state != STARTED && !empty(scheduler->readyQueue))
         {
             scheduler->running = peek(scheduler->readyQueue);
-            dequeue(scheduler->readyQueue);
-
             startProcess(scheduler->running);
             logEvent();
         }
@@ -422,6 +420,7 @@ void recieveProcess(int signum)
         {
             pcb->startLocation = startLocation;
             pcb->endLocation = endLocation;
+            pcb->allocationState = ALLOCATED;
             addProcessToReady(scheduler, pcb);
         }
         else
