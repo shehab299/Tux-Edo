@@ -406,7 +406,7 @@ void recieveProcess(int signum)
 
         PCB *pcb = createPCB(msg.newProcess);
 
-        if (!allocateProcess(buddySystem, pcb))
+        if (!allocateProcess(buddySystem, pcb,pcb->memsize))
             addProcessToWaiting(buddySystem, pcb);
         else
             addProcessToReady(scheduler, pcb);
@@ -443,9 +443,10 @@ void terminateProcess(int signum)
 void addWaitingToReady(BuddySystem *buddySystem)
 {
     PCB *pcb = peekWaitingQueue(buddySystem);
-    if (allocateProcess(buddySystem,pcb))
+    if (allocateProcess(buddySystem,pcb,pcb->memsize))
     {
         dequeWaitingQueue(buddySystem);
         addProcessToReady(scheduler, pcb);
     }
 }
+

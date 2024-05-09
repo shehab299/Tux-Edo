@@ -1,5 +1,6 @@
 #pragma once
-
+#ifndef _defs
+#define _defs
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,6 +20,7 @@
 #define SHKEY 300
 #define SEM1KEY 100
 #define SEM2KEY 200
+#define MEMORYSIZE  1024
 
 typedef struct Process
 {
@@ -26,6 +28,7 @@ typedef struct Process
     int arrivalTime;
     int runningTime;
     int priority;
+    int memsize;
 } Process;
 
 typedef struct processMsg
@@ -57,7 +60,7 @@ enum SchedulingAlgorithm
 
 enum MessageQueues
 {
-    PROCESS_MESSAGE=65,
+    PROCESS_MESSAGE = 65,
     TIME_MESSAGE,
 };
 
@@ -78,8 +81,11 @@ typedef struct PCB
     int finishTime;
     int turnaround;
     float weightedTurnaround;
+    int memsize;
     enum ProcessStates state;
 } PCB;
+
+
 
 enum MessageTypes
 {
@@ -207,6 +213,8 @@ PCB *createPCB(Process newProcess)
     newPCB->turnaround = 0;
     newPCB->weightedTurnaround = 0.0;
     newPCB->state = STOPPED;
+    newPCB->memsize = newProcess.memsize;
 
     return newPCB;
 }
+#endif
