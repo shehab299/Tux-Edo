@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-// waiting queue is out
-
 typedef struct BuddySystem
 {
     void *slots;
@@ -54,14 +52,14 @@ void *createBuddySystem(int memorySize)
     sys->largestFreeSize = memorySize;
     sys->slots = pq_create(20, compareSlot);
     void *slot = createSlot(0, memorySize - 1, NULL, NULL);
-    pq_enqueue(&sys->slots, slot);
+    pq_enqueue(sys->slots, slot);
     return sys;
 }
 
 void *splitSlot(void *_queue, void *_parentSlot)
 {
 
-    PriorityQueue **queue = (PriorityQueue **)_queue;
+    PriorityQueue *queue = (PriorityQueue *)_queue;
 
     Slot *parentSlot = (Slot *)_parentSlot;
     int slotSize = parentSlot->size / 2;
@@ -87,15 +85,15 @@ void mergeSlot(void *_queue, void *_slot)
         return;
     }
 
-    PriorityQueue **queue = (PriorityQueue **)_queue;
+    PriorityQueue *queue = (PriorityQueue *)_queue;
     Slot *parentSlot = (Slot *)childSlot1->parent;
     while (parentSlot != NULL)
     {
         Slot *childSlot2 = (childSlot1 == (Slot *)parentSlot->leftHalf) ? (Slot *)parentSlot->rightHalf : (Slot *)parentSlot->leftHalf;
         if (childSlot2->leftHalf == NULL && childSlot2->rightHalf == NULL && childSlot2->pcb == NULL && childSlot1->leftHalf == NULL && childSlot1->rightHalf == NULL && childSlot1->pcb == NULL)
         {
-            pq_remove_element(*queue, childSlot2);
-            pq_remove_element(*queue, childSlot1);
+            pq_remove_element(queue, childSlot2);
+            pq_remove_element(queue, childSlot1);
             free(childSlot1);
             free(childSlot2);
             parentSlot->leftHalf = parentSlot->rightHalf = NULL;
@@ -108,7 +106,7 @@ void mergeSlot(void *_queue, void *_slot)
     pq_enqueue(queue, childSlot1);
 }
 
-bool allocateProcess(void *_buddySystem, void *_pcb, int memsize,int*startLocation,int*endLocation)
+bool allocateProcess(void *_buddySystem, void *_pcb, int memsize, int *startLocation, int *endLocation)
 {
 
     BuddySystem *buddySystem = (BuddySystem *)_buddySystem;
@@ -116,7 +114,7 @@ bool allocateProcess(void *_buddySystem, void *_pcb, int memsize,int*startLocati
 
     int requiredSize = pow(2, ceil(log(memsize) / log(2)));
     bool success = false;
-    // printf("RequiredSize = %d\n", requiredSize);
+
     if (requiredSize <= buddySystem->freeSize)
     {
         int index = 0;
@@ -130,11 +128,11 @@ bool allocateProcess(void *_buddySystem, void *_pcb, int memsize,int*startLocati
                 pq_remove(queue, index);
                 while (slot->size > requiredSize)
                 {
-                    slot = splitSlot(&buddySystem->slots, slot);
+                    slot = splitSlot(buddySystem->slots, slot);
                 }
                 buddySystem->slots = queue;
                 slot->pcb = _pcb;
-                pq_enqueue(&buddySystem->slots, slot);
+                pq_enqueue(buddySystem->slots, slot);
                 *startLocation = slot->start;
                 *endLocation = slot->end;
                 success = true;
@@ -163,10 +161,9 @@ void deallocateProcess(void *_buddySystem, void *_pcb, int memsize)
             pq_remove(queue, index);
             slot->pcb = NULL;
 
-            mergeSlot(&queue, slot);
+            mergeSlot(queue, slot);
             break;
         }
         index++;
     }
 }
-
