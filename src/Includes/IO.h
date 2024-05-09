@@ -4,105 +4,88 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define NFIELDS 9
+#define NFIELDS 6
 
-struct IO{
-    FILE* logFile;
-    FILE* perfFile;
-};
-
-const char* headers[NFIELDS] = {
-    "At time\t%d\t",
-    "process\t%d\t",
-    "%s\t",
-    "arr\t%d\t",
-    "total\t%d\t",
-    "remain\t%d\t",
-    "wait\t%d\t",
-    "TA\t%d\t",
-    "WTA\t%d"
-};
-
-void intializeLogFile(struct IO* output)
+struct IO
 {
-    output->logFile = safe_fopen("scheduler.log","w+");
-    
-    char* headers[14] = {
+    FILE *logFile;
+    FILE *perfFile;
+};
+
+const char *headers[NFIELDS] = {
+    "At time\t%d\t",
+    "%s\t",
+    "%d\t",
+    "bytes\tfor\tprocess\t%d\t",
+    "from\t%d\t",
+    "to\t%d\t",
+};
+
+void intializeLogFile(struct IO *output)
+{
+    output->logFile = safe_fopen("scheduler.log", "w+");
+
+    char *headers[13] = {
         "#At",
         "time",
         "x ",
+        "allocated",
+        "y",
+        "bytes",
+        "for",
         "process",
-        "y ",
-        "state    ",
-        "arr",
-        "w ",
-        "total",
-        "z ",
-        "remain",
-        "y ",
-        "wait",
-        "k "
-    };
+        "z",
+        "from",
+        "i",
+        "to",
+        "j"};
 
-    for(int i = 0; i < 14; i++){
-        fputs(headers[i],output->logFile);
+    for (int i = 0; i < 13; i++)
+    {
+        fputs(headers[i], output->logFile);
 
-        if(i != 13)
-            fprintf(output->logFile,"\t");
+        if (i != 12)
+            fprintf(output->logFile, "\t");
     }
 
-    fprintf(output->logFile,"\n");
+    fprintf(output->logFile, "\n");
 }
 
-void intializePerfFile(struct IO* output)
+void intializePerfFile(struct IO *output)
 {
-    output->perfFile = safe_fopen("scheduler.perf","w+");
+    output->perfFile = safe_fopen("scheduler.perf", "w+");
 }
 
-
-struct IO* createIO(){
-    struct IO* output = malloc(sizeof(struct IO));
+struct IO *createIO()
+{
+    struct IO *output = malloc(sizeof(struct IO));
     intializeLogFile(output);
     intializePerfFile(output);
     return output;
 }
 
-
-void printLog(struct IO* output, PCB *running, int clock)
+void printLog(struct IO *output, PCB *running, int clock)
 {
-    int nfields = running->state == FINISHED ? NFIELDS : NFIELDS - 2;
 
     int array[] = {clock,
+                   running->allocationState,
+                   running->memsize,
                    running->id,
-                   running->state,
-                   running->arrivalTime,
-                   running->runningTime,
-                   running->remainingTime,
-                   running->waitingTime,
-                   running->turnaround,
-                };
+                   running->startLocation,
+                   running->endLocation};
 
-    for(int i = 0; i < nfields; i++)
+    for (int i = 0; i < NFIELDS; i++)
     {
-        if(i == 2)
-            fprintf(output->logFile,headers[i],state(running->state));
-        else if (i==8)
-        {
-            if (fmod(running->weightedTurnaround,1.0) == 0.0)
-                fprintf(output->logFile, "WTA\t%.0f", running->weightedTurnaround);
-            else if (fmod(running->weightedTurnaround*10, 1.0) == 0.0)
-                fprintf(output->logFile, "WTA\t%.1f", running->weightedTurnaround);
-                else
-                fprintf(output->logFile, "WTA\t%.2f", running->weightedTurnaround);
-        }
+        if (i == 1)
+            fprintf(output->logFile, headers[i], allocationState(running->allocationState));
         else
-            fprintf(output->logFile,headers[i],array[i]);
+            fprintf(output->logFile, headers[i], array[i]);
     }
 
-    fputs("\n",output->logFile);
+    fputs("\n", output->logFile);
 }
 
-void printPerf(struct IO* output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
+void printPerf(struct IO *output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
 {
     fprintf(output->perfFile, "CPU utilization = %.2f\%\n", utilization);
     fprintf(output->perfFile, "Avg WTA = %.2f\n", avgWTA);
