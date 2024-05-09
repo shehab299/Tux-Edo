@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-// waiting queue is out
 
 typedef struct BuddySystem
 {

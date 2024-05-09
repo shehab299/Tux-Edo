@@ -5,11 +5,13 @@
 
 int timer;
 int process_msgQueueID;
+
 void killed(int signum)
 {
     signal(SIGINT, killed);
     exit(0);
 }
+
 void cont(int signum)
 {
     timeMsg receivedTime;

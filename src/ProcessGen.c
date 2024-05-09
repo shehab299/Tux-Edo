@@ -139,6 +139,4 @@ void sendMessageToScheduler(int msgQueueID, Process *newProcess)
     {
         perror("Errror in sending message to scheduler!");
     }
-
-    // printf("ProcessGen: message sent to scheduler with process id %d\n", newProcess->id);
 }
