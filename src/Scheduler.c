@@ -330,6 +330,7 @@ void addProcessToReady(Scheduler *s, PCB *p)
     enqueue(p, scheduler->readyQueue);
     scheduler->numProcesses++;
 }
+
 void addProcessToWaiting(Scheduler *s, PCB *p)
 {
     enqueue(p, s->waitingQueue);

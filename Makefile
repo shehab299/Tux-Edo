@@ -18,3 +18,6 @@ build: clean
 clean:
 	rm -f *.o *.out *.log *.perf
 
+test:
+	gcc tests/test_generator.c -o test.out
+	./test.out
