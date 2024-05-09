@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     signal(SIGUSR1, recieveProcess);
     signal(SIGUSR2, terminateProcess);
     signal(SIGINT, clearResources);
-    buddySystem = createBuddySystem(MEMORYSIZE);
+    buddySystem = createBuddySystem(8);
 
     msgQueueID = createMessageQueue(PROCESS_MESSAGE);
     connectToClk();
@@ -232,7 +232,6 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
         waitingForSignal = 1;
 
         timer++;
-        addWaitingToReady(buddySystem);
         if (remainingTimeSlice != 0 &&
             (scheduler->running->state == STARTED ||
              scheduler->running->state == RESUMED))
@@ -417,8 +416,15 @@ void recieveProcess(int signum)
         }
 
         PCB *pcb = createPCB(msg.newProcess);
-
-        addProcessToWaiting(scheduler, pcb);
+        int startLocation, endLocation;
+        if (allocateProcess(buddySystem, pcb, pcb->memsize, &startLocation, &endLocation))
+        {
+            pcb->startLocation = startLocation;
+            pcb->endLocation = endLocation;
+            addProcessToReady(scheduler, pcb);
+        }
+        else
+            addProcessToWaiting(scheduler, pcb);
     }
 
     waitingForSignal = 0;
@@ -436,18 +442,23 @@ void clearResources(int signum)
 
 void terminateProcess(int signum)
 {
-    PCB *pcb = peek(scheduler->readyQueue);
-    dequeue(scheduler->readyQueue);
+   PCB *pcb = peek(scheduler->readyQueue);
+   dequeue(scheduler->readyQueue);
+
     finishProcess(scheduler->running);
     enqueue(scheduler->running, scheduler->trash);
+
     deallocateProcess(buddySystem, scheduler->running, scheduler->running->memsize);
     pcb->allocationState = FREED;
+
     scheduler->totalTA += scheduler->running->turnaround;
     scheduler->totalWTA += scheduler->running->weightedTurnaround;
     scheduler->totalWaiting += scheduler->running->waitingTime;
 
     logEvent();
     numProcesses--;
+    addWaitingToReady(buddySystem);
+
     signal(SIGUSR2, terminateProcess);
 }
 
@@ -456,10 +467,8 @@ void addWaitingToReady(BuddySystem *buddySystem)
     while (scheduler->numWaitingProcesses > 0)
     {
         PCB *pcb = peek(scheduler->waitingQueue);
-        // printf("Try to allocate Process = %d   \n", pcb->id);
-        // printf("Number in waiting = %d  number in ready = %d\n",size(scheduler->waitingQueue),size(scheduler->readyQueue));
         int startLocation = -1, endLocation = -1;
-        if (allocateProcess(buddySystem, pcb, pcb->memsize,&startLocation,&endLocation))
+        if (allocateProcess(buddySystem, pcb, pcb->memsize, &startLocation, &endLocation))
         {
             pcb->startLocation = startLocation;
             pcb->endLocation = endLocation;
