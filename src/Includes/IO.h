@@ -4,15 +4,27 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define NFIELDS 9
+#define NSCHEDFIELDS 9
+#define NMEMFIELDS 6
 
-struct IO{
-    FILE* logFile;
-    FILE* perfFile;
+struct IO
+{
+    FILE *memFile;
+    FILE *schedulerFile;
+    FILE *perfFile;
 };
 
-const char* headers[NFIELDS] = {
-    "At time\t%d\t",
+const char *memHeaders[NMEMFIELDS] = {
+    " At time\t%d\t",
+    "%s\t",
+    "%d\t",
+    "bytes\tfor\tprocess\t%d\t",
+    "from\t%d\t",
+    "to\t%d\t",
+};
+
+const char *schedulerHeaders[NSCHEDFIELDS] = {
+    " At time\t%d\t",
     "process\t%d\t",
     "%s\t",
     "arr\t%d\t",
@@ -23,9 +35,10 @@ const char* headers[NFIELDS] = {
     "WTA\t%d"
 };
 
-void intializeLogFile(struct IO* output)
+
+void intializeSchedulerFile(struct IO* output)
 {
-    output->logFile = safe_fopen("scheduler.log","w+");
+    output->schedulerFile = safe_fopen("scheduler.log","w+");
     
     char* headers[14] = {
         "#At",
@@ -45,32 +58,69 @@ void intializeLogFile(struct IO* output)
     };
 
     for(int i = 0; i < 14; i++){
-        fputs(headers[i],output->logFile);
+        fputs(headers[i],output->schedulerFile);
 
         if(i != 13)
-            fprintf(output->logFile,"\t");
+            fprintf(output->schedulerFile,"\t");
     }
 
-    fprintf(output->logFile,"\n");
+    fprintf(output->schedulerFile,"\n");
+    printf("Scheduler file initialized\n");
 }
 
-void intializePerfFile(struct IO* output)
+void intializeMemFile(struct IO *output)
 {
-    output->perfFile = safe_fopen("scheduler.perf","w+");
+
+    output->memFile = safe_fopen("memory.log", "w+");
+
+    char *headers[13] = {
+        "#At",
+        "time",
+        "x ",
+        "allocated",
+        "y",
+        "bytes",
+        "for",
+        "process",
+        "z",
+        "from",
+        "i",
+        "to",
+        "j"
+    };
+
+    for (int i = 0; i < 13; i++)
+    {
+        fputs(headers[i], output->memFile);
+
+        if (i != 12)
+            fprintf(output->memFile, "\t");
+    }
+
+    fprintf(output->memFile, "\n");
+    printf("Memory file initialized\n");
 }
 
+void intializePerfFile(struct IO *output)
+{
+    output->perfFile = safe_fopen("scheduler.perf", "w+");
+    printf("Performance file initialized\n");
+}
 
-struct IO* createIO(){
-    struct IO* output = malloc(sizeof(struct IO));
-    intializeLogFile(output);
+struct IO *createIO()
+{
+    struct IO *output = malloc(sizeof(struct IO));
+
+    intializeMemFile(output);
+    intializeSchedulerFile(output);
     intializePerfFile(output);
+
     return output;
 }
 
-
-void printLog(struct IO* output, PCB *running, int clock)
+void schedulerLog(struct IO* output, PCB *running, int clock)
 {
-    int nfields = running->state == FINISHED ? NFIELDS : NFIELDS - 2;
+    int nfields = running->state == FINISHED ? NSCHEDFIELDS : NSCHEDFIELDS - 2;
 
     int array[] = {clock,
                    running->id,
@@ -85,26 +135,47 @@ void printLog(struct IO* output, PCB *running, int clock)
     for(int i = 0; i < nfields; i++)
     {
         if(i == 2)
-            fprintf(output->logFile,headers[i],state(running->state));
+            fprintf(output->schedulerFile,schedulerHeaders[i],state(running->state));
         else if (i==8)
         {
             if (fmod(running->weightedTurnaround,1.0) == 0.0)
-                fprintf(output->logFile, "WTA\t%.0f", running->weightedTurnaround);
+                fprintf(output->schedulerFile, "WTA\t%.0f", running->weightedTurnaround);
             else if (fmod(running->weightedTurnaround*10, 1.0) == 0.0)
-                fprintf(output->logFile, "WTA\t%.1f", running->weightedTurnaround);
+                fprintf(output->schedulerFile, "WTA\t%.1f", running->weightedTurnaround);
                 else
-                fprintf(output->logFile, "WTA\t%.2f", running->weightedTurnaround);
+                fprintf(output->schedulerFile, "WTA\t%.2f", running->weightedTurnaround);
         }
         else
-            fprintf(output->logFile,headers[i],array[i]);
+            fprintf(output->schedulerFile,schedulerHeaders[i],array[i]);
     }
 
-    fputs("\n",output->logFile);
+    fputs("\n",output->schedulerFile);
 }
 
-void printPerf(struct IO* output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
+void memoryLog(struct IO *output, PCB *running, int clock)
 {
-    fprintf(output->perfFile, "CPU utilization = %.2f\%\n", utilization);
+
+    int array[] = {clock,
+                   running->allocationState,
+                   running->memsize,
+                   running->id,
+                   running->startLocation,
+                   running->endLocation};
+
+    for (int i = 0; i < NMEMFIELDS; i++)
+    {
+        if (i == 1)
+            fprintf(output->memFile, memHeaders[i], allocationState(running->allocationState));
+        else
+            fprintf(output->memFile, memHeaders[i], array[i]);
+    }
+
+    fputs("\n", output->memFile);
+}
+
+void printPerf(struct IO *output, float utilization, float avgWTA, float avgWaiting, float stdWTA)
+{
+    fprintf(output->perfFile, "CPU utilization = %.2f%s\n", utilization , "%");
     fprintf(output->perfFile, "Avg WTA = %.2f\n", avgWTA);
     fprintf(output->perfFile, "Avg Waiting = %.2f\n", avgWaiting);
     fprintf(output->perfFile, "Std WTA = %.2f\n", stdWTA);
