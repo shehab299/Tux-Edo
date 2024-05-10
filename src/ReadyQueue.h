@@ -26,7 +26,7 @@ bool compareRemaining(void *a, void *b)
 {
     PCB *processA = (PCB *)a;
     PCB *processB = (PCB *)b;
-    return processA->remainingTime <= processB->remainingTime;
+    return processA->remainingTime < processB->remainingTime;
 }
 
 ReadyQueue *createReadyQueue(enum SchedulingAlgorithm type)
