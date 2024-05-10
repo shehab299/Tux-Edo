@@ -75,6 +75,7 @@ typedef struct PCB
     struct PCB *next;
     int pid;
     int id;
+    int memSize;
     int arrivalTime;
     int runningTime;
     int priority;
@@ -223,9 +224,10 @@ PCB *createPCB(Process newProcess)
     newPCB->arrivalTime = newProcess.arrivalTime;
     newPCB->runningTime = newProcess.runningTime;
     newPCB->priority = newProcess.priority;
+    newPCB->memSize = newProcess.memSize;
+    newPCB->remainingTime = newProcess.runningTime;
     newPCB->waitingTime = 0;
     newPCB->executionTime = 0;
-    newPCB->remainingTime = newProcess.runningTime;
     newPCB->startTime = 0;
     newPCB->responseTime = 0;
     newPCB->preemptedAt = 0;

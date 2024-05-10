@@ -113,16 +113,13 @@ void initalizeQueue(char *filePath, Queue *pQueue)
             {
                 ungetc(ch, fptr);
                 fscanf(fptr, "%d %d %d %d %d", &id, &arrival, &runtime, &priority,&memsize);
-
                 newProcess = (Process *)malloc(sizeof(Process));
                 newProcess->arrivalTime = arrival;
                 newProcess->id = id;
                 newProcess->runningTime = runtime;
                 newProcess->priority = priority;
                 newProcess->memsize = memsize;
-
                 q_enqueue(pQueue, newProcess);
-
                 printf("Successfully read process with id %d\n", id);
             }
         }
