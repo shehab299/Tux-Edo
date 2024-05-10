@@ -29,8 +29,10 @@ typedef struct Scheduler
     float standardDeviation;
 } Scheduler;
 
+
 Scheduler *scheduler;
 BuddySystem *buddySystem;
+
 Scheduler *createScheduler(int schedulingAlgo)
 {
     Scheduler *scheduler = (Scheduler *)malloc(sizeof(Scheduler));
@@ -74,8 +76,8 @@ void stopProcess(PCB *process);
 void finishProcess(PCB *process);
 void addWaitingToReady(BuddySystem *buddySystem);
 
-void logEvent();
-void consoleEvent();
+void logScheduler();
+void logMemory();
 
 void terminateProcess(int signum);
 void clearResources(int signum);
@@ -88,13 +90,14 @@ int main(int argc, char *argv[])
     signal(SIGUSR1, recieveProcess);
     signal(SIGUSR2, terminateProcess);
     signal(SIGINT, clearResources);
-    buddySystem = createBuddySystem(16);
 
     msgQueueID = createMessageQueue(PROCESS_MESSAGE);
     connectToClk();
 
     int selectedAlgo = atoi(argv[1]);
     scheduler = createScheduler(selectedAlgo);
+    buddySystem = createBuddySystem(1024);
+
 
     Process initProcess = {.id = -1, .arrivalTime = 0, .priority = 0, .runningTime = 0};
 
@@ -139,7 +142,7 @@ void HPFSchedule(Scheduler *scheduler)
             dequeue(scheduler->readyQueue);
 
             startProcess(scheduler->running);
-            consoleEvent();
+            logScheduler();
         }
 
         if (scheduler->running->state != STARTED)
@@ -194,7 +197,7 @@ void SRTNScheduler(Scheduler *scheduler)
         if (scheduler->running->state != FINISHED && top->remainingTime < scheduler->running->remainingTime)
         {
             stopProcess(scheduler->running);
-            consoleEvent();
+            logScheduler();
         }
 
         if (scheduler->running->state != STARTED && scheduler->running->state != RESUMED)
@@ -210,7 +213,7 @@ void SRTNScheduler(Scheduler *scheduler)
                 msgsnd(process_msgQueueID, &m, sizeof(int), IPC_NOWAIT);
                 resumeProcess(scheduler->running);
             }
-            consoleEvent();
+            logScheduler();
         }
     }
     kill(getpid(), SIGINT);
@@ -247,7 +250,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
             if (!empty(scheduler->readyQueue))
             {
                 stopProcess(scheduler->running);
-                consoleEvent();
+                logScheduler();
             }
         }
 
@@ -267,7 +270,7 @@ void RRScheduler(Scheduler *scheduler, int timeSlice)
                 msgsnd(process_msgQueueID, &m, sizeof(int), IPC_NOWAIT);
                 resumeProcess(scheduler->running);
             }
-            consoleEvent();
+            logScheduler();
         }
 
         if (scheduler->running->state != STARTED && scheduler->running->state != RESUMED)
@@ -392,13 +395,16 @@ void finishProcess(PCB *process)
     process->weightedTurnaround = (float)process->turnaround / (float)process->runningTime;
 }
 
-void logEvent(PCB* pcb)
-{
-    printLog(output, pcb, getTime());
-}
-void consoleEvent()
+void logScheduler()
 {
     printf("Process %d %s at: %d\n", scheduler->running->id, state(scheduler->running->state), getTime());
+    schedulerLog(output, scheduler->running , getTime());
+}
+
+void logMemory(PCB *pcb)
+{
+    printf("Process %d %s at: %d\n", pcb->id, allocationState(pcb->allocationState), getTime());
+    memoryLog(output, pcb, getTime());
 }
 
 void recieveProcess(int signum)
@@ -419,6 +425,7 @@ void recieveProcess(int signum)
         }
 
         PCB *pcb = createPCB(msg.newProcess);
+
         int startLocation, endLocation;
         if (allocateProcess(buddySystem, pcb, pcb->memsize, &startLocation, &endLocation))
         {
@@ -426,7 +433,7 @@ void recieveProcess(int signum)
             pcb->endLocation = endLocation;
             pcb->allocationState = ALLOCATED;
             addProcessToReady(scheduler, pcb);
-            logEvent(pcb);
+            logMemory(pcb);
         }
         else
             addProcessToWaiting(scheduler, pcb);
@@ -450,24 +457,24 @@ void terminateProcess(int signum)
     finishProcess(scheduler->running);
     enqueue(scheduler->running, scheduler->trash);
 
-     deallocateProcess(buddySystem, scheduler->running, scheduler->running->memsize);
-     scheduler->running->allocationState = FREED;
+    deallocateProcess(buddySystem, scheduler->running, scheduler->running->memsize);
+    scheduler->running->allocationState = FREED;
 
-     scheduler->totalTA += scheduler->running->turnaround;
-     scheduler->totalWTA += scheduler->running->weightedTurnaround;
-     scheduler->totalWaiting += scheduler->running->waitingTime;
+    scheduler->totalTA += scheduler->running->turnaround;
+    scheduler->totalWTA += scheduler->running->weightedTurnaround;
+    scheduler->totalWaiting += scheduler->running->waitingTime;
 
-     logEvent(scheduler->running);
-     consoleEvent();
-     numProcesses--;
-     addWaitingToReady(buddySystem);
+    logMemory(scheduler->running);
+    logScheduler();
 
-     signal(SIGUSR2, terminateProcess);
+    numProcesses--;
+    addWaitingToReady(buddySystem);
+    signal(SIGUSR2, terminateProcess);
 }
 
 void addWaitingToReady(BuddySystem *buddySystem)
 {
-    while (scheduler->numWaitingProcesses > 0)
+    while (!empty(scheduler->waitingQueue))
     {
         PCB *pcb = peek(scheduler->waitingQueue);
         int startLocation = -1, endLocation = -1;
@@ -479,7 +486,7 @@ void addWaitingToReady(BuddySystem *buddySystem)
             dequeue(scheduler->waitingQueue);
             addProcessToReady(scheduler, pcb);
             scheduler->numWaitingProcesses--;
-            logEvent(pcb);
+            logMemory(pcb);
         }
         else
             break;
